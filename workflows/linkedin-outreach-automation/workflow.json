@@ -1,0 +1,1052 @@
+{
+  "name": "LinkedIn Outreach Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Sync PhantomBuster results → HubSpot (accepted / no response after 3 days)",
+        "height": 416,
+        "width": 2400,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -944,
+        -240
+      ],
+      "typeVersion": 1,
+      "id": "7c47b408-ff75-4d5c-8244-3299d20e836e",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "email": "={{ $('Match Lead').item.json.properties.email }}",
+        "additionalFields": {
+          "leadStatus": "connected_on_linkedin"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [
+        944,
+        -224
+      ],
+      "id": "79184d4c-05b9-44fe-81be-5eba7984f0b3",
+      "name": "Connection Accepted",
+      "credentials": {
+        "hubspotOAuth2Api": {
+          "id": "",
+          "name": "HubSpot account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Fetch new leads from HubSpot",
+        "height": 544,
+        "width": 832
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -944,
+        -784
+      ],
+      "typeVersion": 1,
+      "id": "669858d5-4eeb-43ef-ae91-f3116c7c6921",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## PhantomBuster sends the invites",
+        "height": 544,
+        "width": 704,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1120,
+        -784
+      ],
+      "typeVersion": 1,
+      "id": "a9fcb270-6ab3-4300-8c89-6bb9777c36ec",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## Gemini writes each connection note (rate-limited loop)",
+        "height": 544,
+        "width": 1232,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -112,
+        -784
+      ],
+      "typeVersion": 1,
+      "id": "9ef43c2f-c576-4809-ace7-0acb532a9f02",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "agentId": "YOUR_PHANTOMBUSTER_LAUNCH_AGENT_ID",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.phantombuster",
+      "typeVersion": 1,
+      "position": [
+        1408,
+        -560
+      ],
+      "id": "e813bc9a-f231-4bc5-a1f2-0739cc3d7e75",
+      "name": "Launch Agent",
+      "credentials": {
+        "phantombusterApi": {
+          "id": "",
+          "name": "PhantomBuster account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9,
+              "triggerAtMinute": 15
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1136,
+        -400
+      ],
+      "id": "fca4036e-39ba-449a-afba-5d51e23e05bc",
+      "name": "Batch Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "77fc1df5-27cd-466c-a987-2ee11858f679",
+              "name": "mode",
+              "value": "salesnav",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -848,
+        -560
+      ],
+      "id": "7201b288-5af6-4ee7-8e65-100851ab2038",
+      "name": "Config Fields"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "search",
+        "limit": 20,
+        "filterGroupsUi": {
+          "filterGroupsValues": [
+            {
+              "filtersUi": {
+                "filterValues": [
+                  {
+                    "propertyName": "hs_lead_status|enumeration",
+                    "value": "new"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "properties": [
+            "firstname",
+            "lastname",
+            "email",
+            "hs_linkedin_url",
+            "hs_lead_status",
+            "company_information",
+            "company",
+            "jobtitle",
+            "industry"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [
+        -608,
+        -560
+      ],
+      "id": "4ab123f8-9f7a-45ac-a835-64b99512d6a3",
+      "name": "Fetch Leads",
+      "credentials": {
+        "hubspotOAuth2Api": {
+          "id": "",
+          "name": "HubSpot account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Flatten each HubSpot contact into the fields the prompt needs\nconst contacts = $('Fetch Leads').all();\n\nreturn contacts.map(contact => {\n  const props = contact.json.properties;\n  return {\n    json: {\n      argument: {\n        LinkedinUrl: props.hs_linkedin_url,\n        name: props.firstname,\n        company: props.company,\n        jobtitle: props.jobtitle,\n        industry: props.industry,\n        company_information: props.company_information\n      }\n    }\n  }\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -368,
+        -560
+      ],
+      "id": "3da49b19-d84c-4a87-b524-2b09540f3d5b",
+      "name": "Normalize Data"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -48,
+        -560
+      ],
+      "id": "fdd35e9e-bd7a-4730-8321-381ba43c3989",
+      "name": "Loop"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=ROLE\nYou are <<SENDER_FIRST_NAME>>, <<SENDER_TITLE>> at <<YOUR_COMPANY>>. You are connecting with peers in <<TARGET_SECTOR>>. Vibe: a founder, not a sales rep. Tone: warm, low-pressure and curious. Goal: start a professional connection based on shared industry background or relevant work.\n\nINPUT VARIABLES\nTarget Name: {{ $('Fetch Leads').item.json.properties.firstname }}\n\nTarget Company: {{ $('Fetch Leads').item.json.properties.company }}\n\nTarget Role: {{ $('Fetch Leads').item.json.properties.jobtitle }}\n\nTarget Industry: {{ $('Fetch Leads').item.json.properties.industry }}\n\nCompany Context: {{ $('Fetch Leads').item.json.properties.company_information }}\n\nINSTRUCTIONS\nSTEP 1: INDUSTRY NORMALISATION\nConvert Target Industry into a natural, conversational noun phrase (max 2-3 words).\n\nInput: \"International Banking & Capital Markets\" -> Output: \"Capital Markets\"\n\nInput: \"Transportation & Trucking\" -> Output: \"Logistics\"\n\nInput: \"Banking\" -> Output: \"Banking\"\n\nSTEP 2: SELECT OPENING\nRandomly select ONE of these warm openers to replace [RandomOpening]:\n\n\"Hope you're having a great week.\"\n\n\"Hope you're doing well.\"\n\n\"Hope things are going well.\"\n\n\"Hope this message finds you well.\"\n\n\"Hope you're having a good day.\"\n\nSTEP 3: LOGIC & GENERATION\nAnalyse the Company Context and Target Role, then pick the matching option.\n\nOPTION A (Trigger: high volume / operational teams)\n\nLogic: Use if keywords include <<KEYWORDS_A>>.\n\nTemplate: Focus on speed, using the \"Stood Out\" structure.\n\n\"Hi [Target Name], [RandomOpening] Your experience in [RefinedIndustry] stood out to me. <<ONE_LINE_BACKGROUND_A>> Would enjoy connecting if you're open to it. Best, <<SENDER_FIRST_NAME>>\"\n\nOPTION B (Trigger: complexity / corporate)\n\nLogic: Use if keywords include <<KEYWORDS_B>>.\n\nTemplate: Focus on accuracy, using the \"Saw Your Role\" structure.\n\n\"Hi [Target Name], [RandomOpening] Saw your role in [RefinedIndustry] and thought it'd be worth reaching out. <<ONE_LINE_BACKGROUND_B>> Always interested in connecting with people in the space. Best, <<SENDER_FIRST_NAME>>\"\n\nOPTION C (Trigger: general / fallback)\n\nLogic: Use if the context is unclear or generic.\n\nTemplate: Focus on the founder story, using the \"Came Across Profile\" structure.\n\n\"Hi [Target Name], [RandomOpening] I came across your profile and your work in [RefinedIndustry]. <<ONE_LINE_FOUNDER_STORY>> Would be great to connect and exchange insights. Best, <<SENDER_FIRST_NAME>>\"\n\nSTRICT CONSTRAINTS\nLength: Output MUST be under 300 characters (LinkedIn connection-note limit).\n\nGrammar: The transition from the industry hook to the value prop must be smooth.\n\nOutput: Generate ONLY the final message body. No pre-text."
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        384,
+        -416
+      ],
+      "id": "2cabc2df-cbf9-4540-a250-f41492abbdf1",
+      "name": "Outreach Message",
+      "alwaysOutputData": false,
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "maxTries": 2,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "",
+          "name": "Google Gemini account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "email": "={{ $('Fetch Leads').item.json.properties.email }}",
+        "additionalFields": {
+          "customPropertiesUi": {
+            "customPropertiesValues": [
+              {
+                "property": "linkedin_message",
+                "value": "={{ $json.LinkedIn_message }}"
+              }
+            ]
+          },
+          "leadStatus": "outreach_on_linkedin"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [
+        880,
+        -416
+      ],
+      "id": "80ae9548-57ca-41a8-bed7-89fe6517bb67",
+      "name": "Update Lead Status",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "hubspotOAuth2Api": {
+          "id": "",
+          "name": "HubSpot account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Salesnav Linkedin",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "LinkedinUrl": "={{ $('Loop').item.json.argument.LinkedinUrl }}",
+            "LinkedIn_message": "={{ $json.content.parts[0].text.replace(/^\"|\"$/g, '') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "LinkedinUrl",
+              "displayName": "LinkedinUrl",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "LinkedIn_message",
+              "displayName": "LinkedIn_message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        640,
+        -416
+      ],
+      "id": "324517ee-b345-48fa-b00e-806410e17d4c",
+      "name": "Message Logs",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1184,
+        -560
+      ],
+      "id": "2289f78f-19a3-41bf-bf60-e736eb224eec",
+      "name": "Output Buffer"
+    },
+    {
+      "parameters": {
+        "amount": 30
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        160,
+        -416
+      ],
+      "id": "765599cd-6bb7-48f9-b0cc-0469bcb15953",
+      "name": "Rate Limit"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#outreach-alerts",
+          "mode": "name"
+        },
+        "text": "Leads sent to Phantombuster",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        1632,
+        -560
+      ],
+      "id": "138b61d9-87d5-49ec-9ee8-a36d9bc44587",
+      "name": "Update Team",
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getOutput",
+        "agentId": "YOUR_PHANTOMBUSTER_OUTPUT_AGENT_ID",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.phantombuster",
+      "typeVersion": 1,
+      "position": [
+        -848,
+        -96
+      ],
+      "id": "a96dcad2-9cde-43c9-8772-376fbf0f9a23",
+      "name": "Retrieve Connection Results",
+      "credentials": {
+        "phantombusterApi": {
+          "id": "",
+          "name": "PhantomBuster account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "search",
+        "filterGroupsUi": {
+          "filterGroupsValues": [
+            {
+              "filtersUi": {
+                "filterValues": [
+                  {
+                    "propertyName": "hs_linkedin_url|string",
+                    "operator": "CONTAINS_TOKEN",
+                    "value": "={{ $json.linkedinProfileUrl }}"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "properties": [
+            "firstname",
+            "lastname",
+            "email",
+            "hs_lead_status",
+            "hs_linkedin_url"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [
+        -608,
+        -96
+      ],
+      "id": "2cb96add-3d60-4b52-be6a-1b84557bfb44",
+      "name": "Match Lead",
+      "credentials": {
+        "hubspotOAuth2Api": {
+          "id": "",
+          "name": "HubSpot account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "642e80d6-5de4-4685-a309-a661ff047519",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -368,
+        -96
+      ],
+      "id": "80dd11e3-2f0f-4928-b4fe-bb1758e3ebd3",
+      "name": "Validate Field"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "email": "={{ $json.properties.email }}",
+        "additionalFields": {
+          "customPropertiesUi": {
+            "customPropertiesValues": [
+              {
+                "property": "linkedin_invite_date",
+                "value": "={{ Date.parse($('Retrieve Connection Results').item.json.invitationDate.split('T')[0]) }}"
+              }
+            ]
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [
+        -64,
+        -112
+      ],
+      "id": "f84c9764-696e-4075-b3f1-435b990084c6",
+      "name": "Sync Invite Date",
+      "credentials": {
+        "hubspotOAuth2Api": {
+          "id": "",
+          "name": "HubSpot account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1f8ca7c0-8d9f-43f8-be81-c364e4248a9c",
+              "name": "linkedinInviteISO",
+              "value": "={{ new Date(Number($json.properties.linkedin_invite_date.value)).toISOString() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        192,
+        -112
+      ],
+      "id": "10e0c932-1aeb-4b4d-b817-69c9ce746592",
+      "name": "Set Fields"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "41720392-1a80-4e85-a678-ac22810b61c0",
+              "leftValue": "={{ new Date(Number($json.properties.linkedin_invite_date.value)).toISOString() }}",
+              "rightValue": "={{ $now.minus({ days: 3 }).toISO() }}",
+              "operator": {
+                "type": "dateTime",
+                "operation": "before"
+              }
+            },
+            {
+              "id": "e19d9288-f95c-450a-b944-63091026e194",
+              "leftValue": "={{ $('Match Lead').item.json.properties.hs_lead_status }}",
+              "rightValue": "connected_on_linkedin",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            },
+            {
+              "id": "26f7cb54-7391-4e87-bf77-7f64926b1e02",
+              "leftValue": "={{ $json.properties.linkedin_invite_date?.value }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        432,
+        -112
+      ],
+      "id": "66cac562-d880-4faa-ab3e-5992ffc73cc3",
+      "name": "Invite Older Than 3 Days?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8fcadc92-7c65-4794-bd58-07f0ea676b44",
+              "leftValue": "={{ $('Retrieve Connection Results').item.json.requestAccepted }}",
+              "rightValue": "=YES",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "adcc8aee-6bc3-4617-9b38-b8fe8b9ecbb5",
+              "leftValue": "={{ $('Match Lead').item.json.properties.hs_lead_status }}",
+              "rightValue": "outreach_on_linkedin",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        16
+      ],
+      "id": "8ec82650-d339-4366-8ae7-673da0912ec7",
+      "name": "Filter Accepted Requests"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "email": "={{ $('Match Lead').item.json.properties.email }}",
+        "additionalFields": {
+          "leadStatus": "no_response_on_linkedin"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [
+        944,
+        -96
+      ],
+      "id": "63835c39-d519-4f48-8bcd-2d314611638c",
+      "name": "Not Connected",
+      "credentials": {
+        "hubspotOAuth2Api": {
+          "id": "",
+          "name": "HubSpot account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#outreach-alerts",
+          "mode": "name"
+        },
+        "text": "=:handshake: {{ $('Match Lead').item.json.properties.firstname }} accepted your LinkedIn connection request\n{{ $('Match Lead').item.json.properties.hs_linkedin_url }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1200,
+        -224
+      ],
+      "id": "3f65cabc-24df-4f31-9457-1d50e19faa06",
+      "name": "Update Team 2",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "you@example.com",
+        "subject": "LinkedIn connection accepted",
+        "message": "={{ $('Match Lead').item.json.properties.firstname }} {{ $('Match Lead').item.json.properties.lastname }} accepted your LinkedIn connection request: {{ $('Match Lead').item.json.properties.hs_linkedin_url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1200,
+        -64
+      ],
+      "id": "2f36837c-705d-4fc9-bbcc-07125edc3366",
+      "name": "Update Team (Email)",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "a916c48d-e9d0-4428-b0ba-5d797c12e963",
+              "leftValue": "={{ $('Retrieve Connection Results').item.json.requestAccepted }}",
+              "rightValue": "YES",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        -176
+      ],
+      "id": "6f52474b-58d0-402c-9572-dc51eb8e73b8",
+      "name": "Accepted?"
+    },
+    {
+      "parameters": {
+        "content": "# LinkedIn Outreach Automation\n*HubSpot leads → Gemini-written connection notes → PhantomBuster → status synced back to HubSpot*\n\n**9:15 daily, two branches:**\n1. **Outreach:** fetch `new` leads from HubSpot → Gemini picks one of 3 angles and writes a <300-char note → log URL + note to Sheets → mark `outreach_on_linkedin` → PhantomBuster sends the invites from that sheet\n2. **Sync:** read PhantomBuster results → match HubSpot contact → store invite date → accepted ⇒ `connected_on_linkedin` + Slack/Gmail, 3+ days with no accept ⇒ `no_response_on_linkedin`\n\n## Setup\n- Credentials: HubSpot, Gemini, Google Sheets, Slack, Gmail, PhantomBuster\n- Replace `YOUR_GOOGLE_SHEET_ID`, both `YOUR_PHANTOMBUSTER_…_AGENT_ID`s, `#outreach-alerts`, `you@example.com`\n- Fill the `<<…>>` placeholders in **Outreach Message**\n- Point the PhantomBuster LinkedIn Outreach phantom at the `Salesnav Linkedin` sheet tab",
+        "height": 560,
+        "width": 640,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1840,
+        -784
+      ],
+      "id": "82fe5a36-96cc-40f6-b46d-b317e087e6a7",
+      "name": "Overview"
+    }
+  ],
+  "connections": {
+    "Batch Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config Fields",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Retrieve Connection Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config Fields": {
+      "main": [
+        [
+          {
+            "node": "Fetch Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Leads": {
+      "main": [
+        [
+          {
+            "node": "Normalize Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Data": {
+      "main": [
+        [
+          {
+            "node": "Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop": {
+      "main": [
+        [
+          {
+            "node": "Output Buffer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Rate Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rate Limit": {
+      "main": [
+        [
+          {
+            "node": "Outreach Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Outreach Message": {
+      "main": [
+        [
+          {
+            "node": "Message Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message Logs": {
+      "main": [
+        [
+          {
+            "node": "Update Lead Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Lead Status": {
+      "main": [
+        [
+          {
+            "node": "Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Output Buffer": {
+      "main": [
+        [
+          {
+            "node": "Launch Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Launch Agent": {
+      "main": [
+        [
+          {
+            "node": "Update Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrieve Connection Results": {
+      "main": [
+        [
+          {
+            "node": "Match Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Match Lead": {
+      "main": [
+        [
+          {
+            "node": "Validate Field",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Field": {
+      "main": [
+        [
+          {
+            "node": "Sync Invite Date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sync Invite Date": {
+      "main": [
+        [
+          {
+            "node": "Set Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Fields": {
+      "main": [
+        [
+          {
+            "node": "Invite Older Than 3 Days?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Invite Older Than 3 Days?": {
+      "main": [
+        [
+          {
+            "node": "Accepted?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Filter Accepted Requests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Accepted?": {
+      "main": [
+        [
+          {
+            "node": "Connection Accepted",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Not Connected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Accepted Requests": {
+      "main": [
+        [
+          {
+            "node": "Connection Accepted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Connection Accepted": {
+      "main": [
+        [
+          {
+            "node": "Update Team 2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Update Team (Email)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
