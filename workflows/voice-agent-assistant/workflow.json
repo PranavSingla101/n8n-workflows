@@ -1,0 +1,361 @@
+{
+  "name": "Voice Agent Assistant – Calendar MCP Server",
+  "nodes": [
+    {
+      "parameters": {
+        "authentication": "bearerAuth",
+        "path": "voice-assistant-calendar"
+      },
+      "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+      "typeVersion": 2,
+      "position": [
+        -96,
+        -128
+      ],
+      "id": "736c13aa-075f-4bf4-a839-edb30b9e7fdd",
+      "name": "MCP Server Trigger",
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "",
+          "name": "Voice assistant MCP token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "Check whether the user is free in a time window. Call this before creating or moving an event.",
+        "workflowId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Voice Assistant – Check Availability"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "afterTime": "={{ $fromAI('afterTime', `Start of the time window to check, ISO 8601 with timezone offset (e.g. 2026-01-15T14:00:00+05:30)`, 'string') }}",
+            "beforeTime": "={{ $fromAI('beforeTime', `End of the time window to check, ISO 8601 with timezone offset`, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "afterTime",
+              "displayName": "afterTime",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "beforeTime",
+              "displayName": "beforeTime",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        -384,
+        112
+      ],
+      "id": "3bce8e22-1e2c-422e-a31f-e34c72c7af33",
+      "name": "Call 'Check Availability'"
+    },
+    {
+      "parameters": {
+        "description": "Delete a calendar event by eventID. Confirm with the user before deleting.",
+        "workflowId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Voice Assistant – Delete Event"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "eventID": "={{ $fromAI('eventID', `ID of the event to delete. Get it from the Get Events tool first`, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "eventID",
+              "displayName": "eventID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        -16,
+        112
+      ],
+      "id": "73079265-61c3-4bcc-9464-789f204555d2",
+      "name": "Call 'Delete Event'"
+    },
+    {
+      "parameters": {
+        "description": "Create a new calendar event. Check availability first.",
+        "workflowId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Voice Assistant – Create Event"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "summary": "={{ $fromAI('summary', `Short title for the event, e.g. 'Call with Sarah'`, 'string') }}",
+            "start": "={{ $fromAI('start', `Event start, ISO 8601 with timezone offset`, 'string') }}",
+            "end": "={{ $fromAI('end', `Event end, ISO 8601 with timezone offset`, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "start",
+              "displayName": "start",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "end",
+              "displayName": "end",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        -208,
+        112
+      ],
+      "id": "f8890269-2445-4e2f-a6a0-f7c18946abf6",
+      "name": "Call 'Create Event'"
+    },
+    {
+      "parameters": {
+        "description": "Reschedule an existing event to a new start and end time.",
+        "workflowId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Voice Assistant – Update Event"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "eventID": "={{ $fromAI('eventID', `ID of the event to reschedule. Get it from the Get Events tool first`, 'string') }}",
+            "starttime": "={{ $fromAI('starttime', `New start, ISO 8601 with timezone offset`, 'string') }}",
+            "endtime": "={{ $fromAI('endtime', `New end, ISO 8601 with timezone offset`, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "eventID",
+              "displayName": "eventID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "starttime",
+              "displayName": "starttime",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "endtime",
+              "displayName": "endtime",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        352,
+        112
+      ],
+      "id": "896706f2-bb9c-4cca-a7c9-ab991de35209",
+      "name": "Call 'Update Event'"
+    },
+    {
+      "parameters": {
+        "description": "List calendar events in a time range. Returns each event's eventID, summary, start and end.",
+        "workflowId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Voice Assistant – Get Events"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "aftertime": "={{ $fromAI('aftertime', `Start of the time range to list events for, ISO 8601 with timezone offset`, 'string') }}",
+            "beforetime": "={{ $fromAI('beforetime', `End of the time range, ISO 8601 with timezone offset`, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "aftertime",
+              "displayName": "aftertime",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "beforetime",
+              "displayName": "beforetime",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        160,
+        112
+      ],
+      "id": "bb6fd2d1-4920-4ce8-9d0d-85c0a0ba4a1a",
+      "name": "Call 'Get Events'"
+    },
+    {
+      "parameters": {
+        "content": "# Voice Agent Assistant: Calendar MCP Server\n*Talk to a Vapi voice agent → it manages your Google Calendar through these tools*\n\nThis workflow exposes 5 calendar tools over **MCP** (Model Context Protocol). A Vapi voice assistant connects to the MCP URL and calls the tools mid-conversation:\n- **Check Availability** · **Create Event** · **Get Events** · **Update Event** · **Delete Event**\n\nEach tool is a small sub-workflow. The agent fills the inputs itself via `$fromAI()`.\n\n## Setup\n1. Import the 5 files in `sub-workflows/` and connect Google Calendar\n2. In each `Call '…'` node here, select the matching sub-workflow\n3. Create a **Bearer Auth** credential for the MCP trigger and activate\n4. In Vapi, add an MCP tool pointing at the trigger's Production URL with the same bearer token",
+        "height": 500,
+        "width": 620,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1100,
+        -160
+      ],
+      "id": "33b91e23-17e4-4a03-8ab4-e61cb2aa5fe2",
+      "name": "Overview"
+    }
+  ],
+  "connections": {
+    "Call 'Check Availability'": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Delete Event'": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Create Event'": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Update Event'": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Get Events'": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server Trigger",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
