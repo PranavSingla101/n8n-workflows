@@ -1,0 +1,863 @@
+{
+  "name": "AI Website Scraper & Icebreaker",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apollo.io/api/v1/mixed_people/api_search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Api-Key",
+              "value": "YOUR_APOLLO_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"person_titles\": [\n    \"Head of Sales\",\n    \"VP of Sales\",\n    \"Sales Director\",\n    \"Chief Revenue Officer\",\n    \"VP of Growth\",\n    \"Head of Growth\",\n    \"Demand Generation Director\",\n    \"Director of Business Development\",\n    \"Sales Manager\",\n    \"Growth Manager\"\n  ],\n  \"person_seniorities\": [\n    \"c_suite\",\n    \"vp\",\n    \"head\",\n    \"director\",\n    \"manager\"\n  ],\n  \"include_similar_titles\": true,\n  \"q_organization_job_titles\": [\n    \"Sales Development Representative\",\n    \"Business Development Representative\",\n    \"SDR\",\n    \"BDR\",\n    \"Lead Generation Specialist\",\n    \"Outbound Specialist\"\n  ],\n  \"organization_locations\": [\n    \"United States\",\n    \"Canada\",\n    \"Mexico\"\n  ],\n  \"organization_num_employees_ranges\": [\n    \"50,500\"\n  ],\n  \"revenue_range\": {\n    \"min\": 10000000,\n    \"max\": 500000000\n  },\n  \"contact_email_status\": [\n    \"verified\"\n  ],\n  \"prospected_by_current_team\": [\n    \"no\"\n  ],\n  \"page\": 1,\n  \"per_page\": 10\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -32,
+        1920
+      ],
+      "id": "825eff01-0846-46d2-a8aa-faaa0210b706",
+      "name": "Scan Leads"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apollo.io/api/v1/people/match",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Api-Key",
+              "value": "YOUR_APOLLO_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"id\": \"{{ $json.id }}\",\n  \"reveal_personal_emails\": true\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        336,
+        1920
+      ],
+      "id": "530e48bc-3b7f-48fa-a3c4-45575fd821f8",
+      "name": "Unlock leads"
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "content.parts[0].text",
+              "renameField": true,
+              "outputFieldName": "page_summaries"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9934c0ec-1fcd-4083-b58d-b156a2bc3cf3",
+      "name": "Combine Page Summaries",
+      "type": "n8n-nodes-base.aggregate",
+      "position": [
+        1680,
+        2160
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e6bd6f9f-cf18-481e-a604-94ec1c3dd2e5",
+              "name": "first_name",
+              "type": "string",
+              "value": "={{ $json.person.first_name }}"
+            },
+            {
+              "id": "cd64a681-2750-4589-8e86-cee92696ee21",
+              "name": "last_name",
+              "type": "string",
+              "value": "={{ $json.person.last_name }}"
+            },
+            {
+              "id": "b2048d07-c041-4be8-b806-6b92edb342e8",
+              "name": "email",
+              "type": "string",
+              "value": "={{ $json.person.email }}"
+            },
+            {
+              "id": "3656e25a-4eed-4e51-a438-af6b8bc6183c",
+              "name": "website_url",
+              "type": "string",
+              "value": "={{ $json.person.organization.website_url }}"
+            },
+            {
+              "id": "72797695-cda0-4bce-959f-9e5c8a5f6a3f",
+              "name": "company",
+              "type": "string",
+              "value": "={{ $json.person.organization.name }}"
+            },
+            {
+              "id": "5ebb11c0-6523-47ba-8925-bf33bb9e84e4",
+              "name": "headline",
+              "type": "string",
+              "value": "={{ $json.person.headline }}"
+            },
+            {
+              "id": "bdf6d8f1-a76d-4b95-8f73-7c44a986eba2",
+              "name": "designation",
+              "type": "string",
+              "value": "={{ $json.person.title }}"
+            },
+            {
+              "id": "9dc18281-aef2-4d14-9b5b-024bd7f0ca98",
+              "name": "location",
+              "type": "string",
+              "value": "={{ [$json.person.city, $json.person.country].filter(Boolean).join(', ') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d1b1e8e3-4c39-44b5-9130-48f611ec1336",
+      "name": "Prepare Lead",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        704,
+        1920
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "a855e809-ba46-46cc-970c-55c2a104a6e5",
+      "name": "Loop Over Items",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [
+        976,
+        1920
+      ],
+      "executeOnce": false,
+      "typeVersion": 3
+    },
+    {
+      "parameters": {
+        "content": "# Input & Lead Collection\n## scrapes targeted leads using apollo",
+        "height": 864,
+        "width": 1408,
+        "color": 6
+      },
+      "id": "86c3a3f1-da98-493c-bba2-7b11c1746e16",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -528,
+        1568
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "# Website Research & AI Analysis\n## Scrapes company websites, extracts key internal pages, and uses AI to summarize each page. All insights are combined to build deep, research-backed context for outreach.",
+        "height": 864,
+        "width": 1232
+      },
+      "id": "0f80f3a7-8c83-4fae-84e3-6226433f6e3d",
+      "name": "Sticky Note4",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        880,
+        1568
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "# Icebreaker Generation & Output\n## Generates personalized multi-line cold email icebreakers using AI and saves the final results to Google Sheets for review and outbound use.",
+        "height": 864,
+        "width": 816,
+        "color": 7
+      },
+      "id": "bbabc224-9f75-4a18-9798-128136bab1e2",
+      "name": "Sticky Note5",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2112,
+        1568
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -464,
+        2000
+      ],
+      "id": "2abe47d5-e516-48b4-a4ad-8feadba7e59e",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Apollo's search endpoint returns people without emails (those are revealed by the unlock call).\n// Drop anyone Apollo already knows has no email, to save unlock credits.\nconst people = $input.first().json.people || $input.first().json.contacts || [];\n\nreturn people\n  .filter(person => person.has_email !== false)\n  .map(person => ({ json: person }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        144,
+        2048
+      ],
+      "id": "517c5445-ec77-433e-bf6e-94a280b24b2a",
+      "name": "Pre-filter Search Results"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "ce7eb424-68bc-4784-b111-ffcd8918fae2",
+              "leftValue": "={{ $json.person.email }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "bca23275-326e-4be4-ac1c-db6708ab205e",
+              "leftValue": "={{ $json.person.organization.website_url }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "990371e6-0687-48dc-880b-ae2e5c379494",
+              "leftValue": "={{ $json.person.email.toLowerCase() }}",
+              "rightValue": "@gmail.com",
+              "operator": {
+                "type": "string",
+                "operation": "notEndsWith"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b724b252-e813-43e4-befd-b78efa0d00b3",
+      "name": "Has Email + Website",
+      "type": "n8n-nodes-base.filter",
+      "position": [
+        512,
+        2048
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "sendTo": "you@example.com",
+        "subject": "Icebreakers ready for review",
+        "message": "=The Website Icebreaker run has finished. {{ $('Prepare Lead').all().length }} leads were researched and their personalised emails were added to the Google Sheet.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2480,
+        1904
+      ],
+      "id": "4e9ab61a-c810-4ed2-8253-dd7f87bdc252",
+      "name": "Notify Team",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "",
+          "name": "Gmail account"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "first_name": "={{ $('Loop Over Items').first().json.first_name }}",
+            "last_name": "={{ $('Loop Over Items').first().json.last_name }}",
+            "designation": "={{ $('Loop Over Items').first().json.designation }}",
+            "email": "={{ $('Loop Over Items').first().json.email }}",
+            "website_url": "={{ $('Loop Over Items').first().json.website_url }}",
+            "location": "={{ $('Loop Over Items').first().json.location }}",
+            "Outreach Content": "={{ $json.content.parts[0].text }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "first_name",
+              "displayName": "first_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_name",
+              "displayName": "last_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "designation",
+              "displayName": "designation",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "website_url",
+              "displayName": "website_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "location",
+              "displayName": "location",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Outreach Content",
+              "displayName": "Outreach Content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "6ab2df5d-bb93-4b9f-a31b-7579e47bbea8",
+      "name": "Add Icebreaker",
+      "type": "n8n-nodes-base.googleSheets",
+      "position": [
+        2688,
+        2160
+      ],
+      "executeOnce": false,
+      "typeVersion": 4.5,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You're a helpful, intelligent website research assistant.\n\nYou're given a Markdown scrape of one page from a company website. Write a two-paragraph abstract of what this page is about.\n\nReturn in this JSON format:\n\n{\"abstract\":\"your abstract goes here\"}\n\nRules:\n- Be comprehensive, with the level of detail of an abstract to a published paper.\n- Use a straightforward, spartan tone of voice.\n- If the page is empty, return \"no content\".\n\nPage URL: {{ $json.metadata?.sourceURL || $json.metadata?.url || '' }}\n\nPage content:\n{{ ($json.markdown || '').slice(0, 20000) }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        1392,
+        2160
+      ],
+      "id": "e912d7c2-d074-43e6-a72c-0bff6d17767d",
+      "name": "Website Research",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "",
+          "name": "Google Gemini account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a helpful, intelligent sales assistant. Your task is to take website research and turn it into a personalised cold email body that feels researched and tailored.\n\nHere is the prospect and company data:\nProfile: {{ $('Loop Over Items').first().json.first_name }} {{ $('Loop Over Items').first().json.last_name }} - {{ $('Loop Over Items').first().json.designation }} at {{ $('Loop Over Items').first().json.company }}\nHeadline: {{ $('Loop Over Items').first().json.headline }}\nWebsite research (one abstract per page):\n{{ $json.page_summaries.join(\"\\n\\n\") }}\n\nProduct Description: {{ $('Campaign Settings').first().json['About your Product'] }}\nProduct URL: {{ $('Campaign Settings').first().json['Product URL'] }}\nSender Name: {{ $('Campaign Settings').first().json['Your Name'] }}\n\nWrite a cold email to this prospect.\n- Open with a multi-line icebreaker built on non-obvious details from the website research: small but meaningful things that show real research.\n- Connect those details to the product's most relevant benefit for this company.\n- Keep the tone professional, concise and credible. Avoid fluff.\n- Avoid generic praise like \"Great website\" or \"Love your marketing.\"\n- Return only the email body, signed with the sender name."
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        2208,
+        2080
+      ],
+      "id": "d9a0ee51-8826-4ff5-87b6-41fb3c87aa8d",
+      "name": "Generate Icebreaker",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "",
+          "name": "Google Gemini account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "Crawling",
+        "operation": "crawl",
+        "url": "={{ $json.website_url }}",
+        "limit": 3,
+        "crawlOptions": {},
+        "requestOptions": {}
+      },
+      "type": "@mendable/n8n-nodes-firecrawl.firecrawl",
+      "typeVersion": 1,
+      "position": [
+        1184,
+        1840
+      ],
+      "id": "a25b143a-d6ce-4d25-acdc-3a98423cc217",
+      "name": "Start Website Crawl",
+      "credentials": {
+        "firecrawlApi": {
+          "id": "",
+          "name": "Firecrawl account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e8245446-5e9f-40a1-9b0b-39701e2d2d15",
+              "name": "Your Name",
+              "type": "string",
+              "value": "<<YOUR_NAME>>"
+            },
+            {
+              "id": "55862cfd-9248-4ea5-8a5b-f14e1cf1d9ed",
+              "name": "About your Product",
+              "type": "string",
+              "value": "<<ONE_PARAGRAPH_PRODUCT_DESCRIPTION_AND_KEY_BENEFITS>>"
+            },
+            {
+              "id": "60b99a28-f4ff-44f9-900d-f2730994a201",
+              "name": "Product URL",
+              "type": "string",
+              "value": "https://example.com"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -240,
+        2000
+      ],
+      "id": "0f5ba701-eb1a-4ec7-b1a1-f5c1cea15539",
+      "name": "Campaign Settings"
+    },
+    {
+      "parameters": {
+        "amount": 20
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1392,
+        1840
+      ],
+      "id": "c9ef0260-c03d-4ffb-9202-e050c12455a5",
+      "name": "Wait for Crawl",
+      "webhookId": "d35d3fb5-3f51-446e-abba-e0994b90144a"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.firecrawl.dev/v2/crawl/{{ $('Start Website Crawl').first().json.id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "firecrawlApi",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1584,
+        1840
+      ],
+      "id": "bbb8b7b9-43cd-420e-9bd6-78ee95aa0afd",
+      "name": "Check Crawl Status",
+      "credentials": {
+        "firecrawlApi": {
+          "id": "",
+          "name": "Firecrawl account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "7b903d72-aa28-4b2e-9fc3-64a2d8fc0ea9",
+              "leftValue": "={{ ['completed', 'failed', 'cancelled'].includes($json.status) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1776,
+        1840
+      ],
+      "id": "0e6c8a5d-550f-4caf-b2b9-b29b043e6286",
+      "name": "Crawl Finished?"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1184,
+        2160
+      ],
+      "id": "ac49438d-7c29-4190-861c-d67d2ca4eaad",
+      "name": "Split Pages",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "content": "# AI Website Scraper & Icebreaker\n*Apollo leads → Firecrawl website research → Gemini-written personalised cold emails*\n\n1. **Campaign Settings:** your name, product description and URL\n2. **Apollo:** search ICP prospects → unlock verified emails → keep leads with a company website (no Gmail)\n3. **Firecrawl:** crawl up to 3 pages of each prospect's site (async job, polled until it finishes)\n4. **Gemini:** summarise each page → combine → write a multi-line icebreaker + email body\n5. **Output:** append to Google Sheets, then email you when the batch is done\n\n## Setup\n- Install the community node `@mendable/n8n-nodes-firecrawl`\n- Credentials: Firecrawl, Google Gemini, Google Sheets, Gmail\n- Replace `YOUR_APOLLO_API_KEY`, `YOUR_GOOGLE_SHEET_ID`, `you@example.com` and fill in **Campaign Settings**\n- Edit the ICP filters in the **Scan Leads** request body",
+        "height": 560,
+        "width": 620,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        1568
+      ],
+      "id": "6127889c-5dfa-4c91-a11e-f0c88da1fa93",
+      "name": "Overview"
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Campaign Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Campaign Settings": {
+      "main": [
+        [
+          {
+            "node": "Scan Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scan Leads": {
+      "main": [
+        [
+          {
+            "node": "Pre-filter Search Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pre-filter Search Results": {
+      "main": [
+        [
+          {
+            "node": "Unlock leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unlock leads": {
+      "main": [
+        [
+          {
+            "node": "Has Email + Website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Email + Website": {
+      "main": [
+        [
+          {
+            "node": "Prepare Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Lead": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Notify Team",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Start Website Crawl",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start Website Crawl": {
+      "main": [
+        [
+          {
+            "node": "Wait for Crawl",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Crawl": {
+      "main": [
+        [
+          {
+            "node": "Check Crawl Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Crawl Status": {
+      "main": [
+        [
+          {
+            "node": "Crawl Finished?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Crawl Finished?": {
+      "main": [
+        [
+          {
+            "node": "Split Pages",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait for Crawl",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Pages": {
+      "main": [
+        [
+          {
+            "node": "Website Research",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Website Research": {
+      "main": [
+        [
+          {
+            "node": "Combine Page Summaries",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine Page Summaries": {
+      "main": [
+        [
+          {
+            "node": "Generate Icebreaker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Icebreaker": {
+      "main": [
+        [
+          {
+            "node": "Add Icebreaker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Icebreaker": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
