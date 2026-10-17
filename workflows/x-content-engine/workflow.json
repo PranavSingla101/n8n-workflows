@@ -1,0 +1,668 @@
+{
+  "name": "X Content Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Posts",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Topic": "={{ $('Topic').first().json.topic }}",
+            "HOOK": "={{ $json.hook }}",
+            "BODY": "={{ $json.body }}",
+            "Status": "Review",
+            "Created": "={{ $now.toISO() }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Topic",
+              "displayName": "Topic",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "HOOK",
+              "displayName": "HOOK",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "BODY",
+              "displayName": "BODY",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Created",
+              "displayName": "Created",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        2192,
+        -144
+      ],
+      "id": "bfa7bb27-4eae-4b39-815e-24eca3c17411",
+      "name": "Save Draft for Review",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5c7619b4-8400-4532-b7c7-73c446216853",
+              "name": "topic",
+              "value": "n8n",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        736,
+        -96
+      ],
+      "id": "0263c990-0185-4a49-86d3-6d7ff739636c",
+      "name": "Topic"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-lite",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1424,
+        96
+      ],
+      "id": "cf6aad96-e964-4cd1-9ea4-512b11754037",
+      "name": "Google Gemini Chat Model",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "",
+          "name": "Google Gemini account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## 1 · Find a fresh article on the topic",
+        "height": 576,
+        "width": 848,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        448,
+        -304
+      ],
+      "typeVersion": 1,
+      "id": "873275c9-a4ed-48a7-b177-58cc25467789",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.HOOK }}\n\n{{ $json.BODY }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.twitter",
+      "typeVersion": 2,
+      "position": [
+        1488,
+        368
+      ],
+      "id": "0998538b-cad5-48a7-bfca-b72e34a4e32d",
+      "name": "Post to X",
+      "credentials": {
+        "twitterOAuth2Api": {
+          "id": "",
+          "name": "X account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 10
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        784,
+        368
+      ],
+      "id": "56e2b5a9-26e6-4f7f-8f6b-321c0aaa0e02",
+      "name": "Daily 10 am"
+    },
+    {
+      "parameters": {
+        "query": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Search_Query', `A short web search query to research the tool or topic (docs, landing page, features)`, 'string') }}",
+        "webSearchOptions": {
+          "maxResults": 1,
+          "region": "us-en",
+          "safeSearch": 0
+        },
+        "cacheSettings": {
+          "enableCache": true,
+          "cacheTTL": 300
+        },
+        "reliabilitySettings": {},
+        "proxySettings": {},
+        "searchFilters": {}
+      },
+      "type": "n8n-nodes-duckduckgo-search.duckDuckGoTool",
+      "typeVersion": 1,
+      "position": [
+        1712,
+        96
+      ],
+      "id": "9bdb133a-81aa-460b-a534-3559cd055dc2",
+      "name": "Search Articles"
+    },
+    {
+      "parameters": {
+        "url": "YOUR_RSS_FEED_URL",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        928,
+        -96
+      ],
+      "id": "5c29ec40-3b43-48de-9b6a-808c733c6c6b",
+      "name": "RSS Feed"
+    },
+    {
+      "parameters": {
+        "jsCode": "const topicInput = $('Topic').first().json.topic;\n// Safety check: if input is missing, default to \"general\"\nconst topic = topicInput ? topicInput.toLowerCase() : \"general\";\n\nconst items = $input.all();\n\n// 1. Safety check: Handle empty RSS feed\nif (!items || items.length === 0) {\n  return []; \n}\n\n// 2. FILTER: Find articles mentioning the topic\nlet relevantItems = items.filter(item => {\n  const title = (item.json.title || \"\").toLowerCase();\n  const content = (item.json.contentSnippet || \"\").toLowerCase();\n  return title.includes(topic) || content.includes(topic);\n});\n\n// 3. FALLBACK: If no match, use the first item (safely)\nif (relevantItems.length === 0) {\n  relevantItems = [items[0]];\n}\n\n// 4. LIMIT: Return only 1 item\nreturn relevantItems.slice(0, 1);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1136,
+        -96
+      ],
+      "id": "ba74f8af-56ff-48a8-8c4d-d4d060188b41",
+      "name": "Pick Relevant Article"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=### Task\nGenerate a viral X post based on the following context.\n\n**Context/Topic:**\n{{ $('Topic').item.json.topic }}\n\n**Source Material:**\nTitle: {{ $json.title }}\nSummary: {{ $json.contentSnippet }}\nLink: {{ $json.link }}\n\nYou can use the search tool once to check the article or research the tool.\n",
+        "options": {
+          "systemMessage": "=### Role\nYou are an expert AI Automation Architect and Viral Content Ghostwriter. You specialize in dissecting software tools (SaaS, AI, DevTools) and creating high-conversion \"Growth Engineering\" content for X (Twitter).\n\n### Objective\nYour goal is to generate a viral, lead-magnet style X post about a specific **Tool** or **Topic** provided by the user.\n\n### Tools & Research\n**You have access to a Search Tool.**\nUnless the user provides full context, you **MUST** use the search tool to research the target tool/topic to identify:\n1.  **The Specific Workflow Bottleneck:** What exact manual, technical, or tedious task does this tool resolve? (e.g., \"Manually copy-pasting JSON,\" \"Debugging server logs,\" \"Scraping messy HTML\").\n2.  **The \"Hidden\" Technical Capability:** Does it have an API, Webhooks, specific integrations, or a unique AI model?\n3.  **The Integration Angle:** How can it connect to n8n/Make to create a \"Super-Workflow\"?\nTOOL USE RULE: You are permitted to use the Search Tool MAXIMUM ONE TIME. If the search results are generic or insufficient, you MUST improvise based on your internal knowledge. DO NOT search twice.\n\n### STRICT Research Constraints\n* **NO GENERIC \"SALES\" ANGLES:** Do NOT frame the tool as a way to \"get more leads\" or \"increase sales\" unless the tool is explicitly a CRM or Sales tool.\n* **Focus on EFFICIENCY & ENGINEERING:** Focus on saving time, reducing code, automating boring work, or stabilizing workflows.\n\n### Operational Steps\n\n**Step 1: RESEARCH & MAPPING (The Filter)**\nUse the search tool to find the tool's documentation or landing page. Map the tool to a specific problem:\n* *Bad:* \"This tool helps you get clients.\"\n* *Good:* \"This tool automates cold email enrichment using 3 different APIs so you never open a spreadsheet again.\"\n\n**Step 2: ANALYZE (The Viral Angle)**\nSelect the strongest technical angle:\n* **The \"Killer\" Automation:** How to automate a complex technical task.\n* **The \"David vs. Goliath\":** How this tool beats a popular, expensive competitor (e.g., \"The free Zapier alternative\").\n* **The \"Efficiency Hack\":** How to turn a 4-hour manual process into a 1-click execution.\n\n**Step 3: WRITE (The \"Lead Magnet\" Template)**\nDraft the post using this EXACT structure (Strict adherence required):\n\n1.  **The Hook:** A scroll-stopping statement addressing the *technical pain*. (e.g., \"Stop parsing PDF invoices manually.\" or \"This open-source tool kills [Expensive SaaS].\")\n2.  **The Agitation:** Briefly explain the misery of the manual process. (e.g., \"RegEx is a nightmare...\" or \"Deploying to AWS takes too long...\")\n3.  **The Solution (The \"I Built\" Statement):** Introduce the automated workflow. (e.g., \"I built an n8n workflow that auto-extracts data instantly.\")\n4.  **The Breakdown:** Use bullet points (✅, ⚡, 🛠️) to explain *technically* what the system does.\n    * *Must mention:* Specific features (e.g., \"Webhooks,\" \"Python Script,\" \"OCR\").\n5.  **The CTA (Conversion):** A strict \"Comment to Claim\" ending.\n    * Offer a specific asset (Guide, SOP, JSON Workflow, Blueprint).\n    * Command: \"Comment '[KEYWORD]'\"\n    * Command: \"Follow me\"\n\n### Restrictions\n* **Tone:** Authoritative, \"Builder/Engineer\" vibe, value-dense.\n* **No Hashtags.**\n* **No Fluff:** Avoid generic hype. Use technical terms (API, Webhooks, Scrape, Enrich, Deploy).\n* **Formatting:** Use line breaks for readability. Use 1-2 relevant emojis per section.\n\n### Output Format (Strict)\nYou must reply ONLY with a single valid JSON object. Do not add markdown formatting or conversational text outside the JSON. Use `\\n` for line breaks.\n\n**Required JSON Structure:**\n{\n  \"hook\": \"The scroll-stopping headline.\",\n  \"body\": \"The full post content including Agitation, Solution, Bullet points, and the 'Comment [KEYWORD]' CTA.\"\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.1,
+      "position": [
+        1488,
+        -144
+      ],
+      "id": "c884a064-83a7-4e0c-b5c4-737cff463e08",
+      "name": "Research & Write Post"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Posts",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Status",
+              "lookupValue": "Approved"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        1104,
+        368
+      ],
+      "id": "8d404468-f687-485a-ba7b-ee6e103f580f",
+      "name": "Get Approved Posts",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## 2 · Research, write the post, save as draft (Status = Review)",
+        "height": 576,
+        "width": 1104
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1296,
+        -304
+      ],
+      "typeVersion": 1,
+      "id": "f5d5350e-9a8c-4420-99fa-69f2c0934bda",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## 3 · Post one approved draft per day (Status = Approved → Posted)",
+        "height": 352,
+        "width": 1952,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        448,
+        272
+      ],
+      "typeVersion": 1,
+      "id": "026ac5ec-3b92-41ff-a844-e61267fb677e",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Posts",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Status": "Posted",
+            "Posted": "={{ $now.toISO() }}",
+            "row_number": "={{ $('Pick One Post').item.json.row_number }}"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "Topic",
+              "displayName": "Topic",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "HOOK",
+              "displayName": "HOOK",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "BODY",
+              "displayName": "BODY",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Created",
+              "displayName": "Created",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Posted",
+              "displayName": "Posted",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        1744,
+        368
+      ],
+      "id": "e0c7c889-f9eb-4c50-abed-fc2b17d3071f",
+      "name": "Mark as Posted",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the raw output from the AI Agent\n// Note: Depending on your Agent's settings, the text might be in 'output', 'text', or 'response'\nconst item = $input.item.json;\nconst rawText = item.output || item.text || item.response || JSON.stringify(item);\n\n// 1. CLEAN: Remove Markdown (```json ... ```) and find the JSON object\n// This regex looks for content specifically between the first '{' and the last '}'\nlet cleanText = rawText;\nconst firstBrace = rawText.indexOf('{');\nconst lastBrace = rawText.lastIndexOf('}');\n\nif (firstBrace !== -1 && lastBrace !== -1) {\n  cleanText = rawText.substring(firstBrace, lastBrace + 1);\n}\n\n// 2. PARSE: safely convert to JSON\nlet data = {};\ntry {\n  data = JSON.parse(cleanText);\n} catch (error) {\n  // Fallback: If parsing fails, wrap the raw text so the workflow doesn't stop\n  data = {\n    hook: \"Error parsing AI response\",\n    body: rawText.substring(0, 200) + \"...\" // truncate for safety\n  };\n}\n\n// 3. RETURN: Map to the fields your Google Sheet expects\nreturn {\n  json: {\n    hook: data.hook || data.Hook,\n    body: data.body || data.Body\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1904,
+        -144
+      ],
+      "id": "451850c0-ce5e-4f65-b57c-3731f986fc90",
+      "name": "Parse Post JSON"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        528,
+        -96
+      ],
+      "id": "0a135d54-3cdc-49e7-b096-6d213399ad4e",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        528,
+        80
+      ],
+      "id": "369a23cf-72ad-43a6-be89-5e83f2f3a990",
+      "name": "Daily 8 am"
+    },
+    {
+      "parameters": {
+        "maxItems": 1
+      },
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        1296,
+        368
+      ],
+      "id": "90e17817-86fe-49ca-9bf7-10757e43591e",
+      "name": "Pick One Post"
+    },
+    {
+      "parameters": {
+        "content": "# X Content Engine\n*RSS + web research → Gemini agent writes a post → you approve it in Sheets → posted to X*\n\n**Drafting (8 am or manual):** picks the latest RSS article that mentions your topic, then a Gemini agent (with one DuckDuckGo search) writes a post: hook, problem, solution, technical breakdown and a 'comment to claim' CTA. The draft is saved to Sheets with Status = `Review`.\n\n**Posting (10 am):** takes one row with Status = `Approved`, posts it to X and marks it `Posted`.\n\n## Setup\n- Install the community node `n8n-nodes-duckduckgo-search`\n- Credentials: Google Gemini, Google Sheets, X (OAuth2)\n- Replace `YOUR_RSS_FEED_URL`, `YOUR_GOOGLE_SHEET_ID` and set your **Topic**\n- Sheet tab `Posts` with columns: Topic, HOOK, BODY, Status, Created, Posted",
+        "height": 480,
+        "width": 620,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        -304
+      ],
+      "id": "7e0d53e5-e3c0-4ab9-99f6-afe4d7075cfb",
+      "name": "Overview"
+    }
+  ],
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily 8 am": {
+      "main": [
+        [
+          {
+            "node": "Topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Topic": {
+      "main": [
+        [
+          {
+            "node": "RSS Feed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Feed": {
+      "main": [
+        [
+          {
+            "node": "Pick Relevant Article",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick Relevant Article": {
+      "main": [
+        [
+          {
+            "node": "Research & Write Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Research & Write Post",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Articles": {
+      "ai_tool": [
+        [
+          {
+            "node": "Research & Write Post",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research & Write Post": {
+      "main": [
+        [
+          {
+            "node": "Parse Post JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Post JSON": {
+      "main": [
+        [
+          {
+            "node": "Save Draft for Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily 10 am": {
+      "main": [
+        [
+          {
+            "node": "Get Approved Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Approved Posts": {
+      "main": [
+        [
+          {
+            "node": "Pick One Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pick One Post": {
+      "main": [
+        [
+          {
+            "node": "Post to X",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post to X": {
+      "main": [
+        [
+          {
+            "node": "Mark as Posted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
