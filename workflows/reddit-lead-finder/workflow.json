@@ -1,0 +1,1064 @@
+{
+  "name": "Reddit Lead Finder",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "b4c101c7-8d62-4032-a6ee-061465572158",
+      "name": "Every 6 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Run Log",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "5dc89b94-975b-4146-81da-ba66a47b1d30",
+      "name": "Read Last Run State",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        440,
+        310
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nif (items.length === 0) {\n  return [{ json: { last_run_timestamp: new Date(Date.now() - 86400000).toISOString(), last_post_ids: {} } }];\n}\n// Return the last row representing the latest run\nconst lastRun = items[items.length - 1].json;\ntry {\n  const ids = typeof lastRun.last_post_ids === 'string' ? JSON.parse(lastRun.last_post_ids) : (lastRun.last_post_ids || {});\n  return [{ json: { last_run_timestamp: lastRun.timestamp || new Date(Date.now() - 86400000).toISOString(), last_post_ids: ids } }];\n} catch (e) {\n  return [{ json: { last_run_timestamp: lastRun.timestamp || new Date(Date.now() - 86400000).toISOString(), last_post_ids: {} } }];\n}"
+      },
+      "id": "1113eca3-fc90-46d0-8556-821b728e5a85",
+      "name": "Extract Latest Run Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        310
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "b3e92ea2-e3ad-4e0f-bcbf-1a1a5b8bfdfd",
+              "leftValue": "={{ $('Settings').first().json.use_reddit_api }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "66489ebb-12ca-4230-a1dd-5df4a5b11449",
+      "name": "Use Reddit API?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        880,
+        310
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $('Settings').first().json.subreddits.map(subreddit => ({ json: { subreddit } }));"
+      },
+      "id": "f36e95ff-62c4-4b9e-94a6-70043a935ab7",
+      "name": "List Subreddits",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "99289e19-85b5-4309-8a78-3dcaab934de4",
+      "name": "Loop Subreddits",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1320,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://oauth.reddit.com/r/{{ $json.subreddit }}/new",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "redditOAuth2Api",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "n8n-reddit-lead-finder/1.0"
+            }
+          ]
+        },
+        "options": {},
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "limit",
+              "value": "100"
+            }
+          ]
+        }
+      },
+      "id": "6be7dadb-8a34-4eeb-b3e6-e810b899ad2e",
+      "name": "Fetch Subreddit (Reddit API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        100
+      ],
+      "credentials": {
+        "redditOAuth2Api": {
+          "id": "",
+          "name": "Reddit account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "id": "3fcadf2d-269d-444a-84aa-fe51ef55be5f",
+      "name": "Wait 2s",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1760,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/automation-lab~reddit-scraper/run-sync-get-dataset-items",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { startUrls: $('Settings').first().json.subreddits.map(s => ({ url: `https://www.reddit.com/r/${s}/new/` })), maxPostCount: 100, includeComments: false, proxy: { useApifyProxy: true, apifyProxyGroups: ['RESIDENTIAL'] } } }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "6b76be2c-46e6-4cf2-a6dd-dadd2fc6b49d",
+      "name": "Fetch Subreddits (Apify)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1320,
+        440
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Apify API (Authorization: Bearer)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const lastRunTimestamp = $('Extract Latest Run Log').first()?.json?.last_run_timestamp\n  ? new Date($('Extract Latest Run Log').first().json.last_run_timestamp).getTime() / 1000\n  : (Date.now() / 1000) - 86400;\n\nreturn $input.all().flatMap(item => {\n  const d = item.json;\n  const isReddit = !!d.data?.children;\n  \n  if (isReddit) {\n    return d.data.children\n      .map(child => child.data)\n      .filter(p => p.score >= -2)\n      .filter(p => p.created_utc > lastRunTimestamp)\n      .filter(p => p.selftext !== '[deleted]' && p.selftext !== '[removed]')\n      .map(p => ({\n        json: {\n          date: new Date(p.created_utc * 1000).toISOString(),\n          platform: 'reddit',\n          source: 'reddit_api',\n          username: p.author,\n          post_url: 'https://reddit.com' + p.permalink,\n          post_title: p.title,\n          post_text: (p.title + ' ' + (p.selftext || '')).trim().substring(0, 2000),\n          reddit_score: p.score,\n          subreddit: p.subreddit,\n          post_id: p.name\n        }\n      }));\n  } else {\n    // Apify format\n    return [{\n      json: {\n        date: d.createdAt || new Date().toISOString(),\n        platform: 'reddit',\n        source: 'apify',\n        username: d.username || d.author,\n        post_url: d.url || d.postUrl,\n        post_title: d.title,\n        post_text: (d.title + ' ' + (d.text || d.body || '')).trim().substring(0, 2000),\n        reddit_score: d.score || 0,\n        subreddit: d.communityName || d.subreddit,\n        post_id: d.id\n      }\n    }];\n  }\n});"
+      },
+      "id": "bdc0685e-dd49-4282-9f11-8b1f7a53088f",
+      "name": "Transform & Normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        310
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Seen URLs",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "41ee556f-4d50-47f7-9041-da418a61fcf2",
+      "name": "Read Seen URLs",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2200,
+        310
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const seenUrlsItems = $('Read Seen URLs').all();\nconst seenSet = new Set(seenUrlsItems.map(i => i.json.post_url).filter(Boolean));\n\nconst newPosts = $('Transform & Normalize').all().filter(item => !seenSet.has(item.json.post_url));\n\nif (newPosts.length === 0) {\n  return [{ json: { _no_new_posts: true, count: 0 } }];\n}\n\nreturn newPosts;"
+      },
+      "id": "60a6baac-f963-4ca5-a128-2cbacb47ae6f",
+      "name": "Deduplication",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2420,
+        310
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "a9e2f2e1-a2b3-4cbf-bd7e-8d9e2f2e1a2c",
+              "leftValue": "={{ $json._no_new_posts }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2c8ec598-93cd-44d1-be91-5a1becbf8421",
+      "name": "Any New Posts?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        310
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    timestamp: new Date().toISOString(),\n    total_posts_fetched: 0,\n    leads_qualified: 0,\n    hot_leads: 0,\n    last_post_ids: JSON.stringify($('Extract Latest Run Log').first().json.last_post_ids || {}),\n    execution_status: 'No New Posts'\n  }\n}];"
+      },
+      "id": "90f275c6-2845-4814-80fe-08d239b4dc57",
+      "name": "No New Posts Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        940
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 10,
+        "options": {}
+      },
+      "id": "23c6e6f5-90cc-4e68-baf4-75c838a1e5b0",
+      "name": "Batches of 10",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        220,
+        820
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googlePalmApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ (() => {\n  const s = $('Settings').first().json;\n  const posts = $input.all().map(i => ({ post_url: i.json.post_url, subreddit: i.json.subreddit, text: i.json.post_text }));\n  const prompt = `You are an expert lead qualifier for ${s.niche}. Analyze the following ${posts.length} Reddit posts and return a JSON array with one qualification object per post, in the same order.\n\nFor each post return:\n{\n  \"post_url\": \"(copy from input)\",\n  \"post_summary\": \"1-2 sentence summary\",\n  \"category\": \"${s.categories}\",\n  \"intent_level\": \"Hot|Warm|Cold\",\n  \"urgency\": \"High|Medium|Low\",\n  \"genuine_inquiry\": \"Yes|No|Maybe\",\n  \"likely_customer\": \"Yes|No|Maybe\",\n  \"lead_score\": 0-10,\n  \"outreach_message\": \"personalised first-contact Reddit DM under 100 words: warm, helpful, not salesy\",\n  \"ai_reasoning\": \"why you assigned this score and intent level\"\n}\n\nScoring guide:\nHot (7-10): actively seeking help NOW: mentions paying for help, a tight deadline, or asks directly about hiring someone.\nWarm (4-6): researching options, interested but not urgent.\nCold (0-3): general curiosity or sharing news, not a buyer.\n\nPosts to analyze:\n${JSON.stringify(posts)}\n\nReturn ONLY a valid JSON array.`;\n  return { contents: [{ parts: [{ text: prompt }] }], generationConfig: { temperature: 0.2, responseMimeType: 'application/json' } };\n})() }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "95eaeb6e-019e-4b96-a333-33aa4fc4aa8a",
+      "name": "Gemini: Qualify Batch",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        940
+      ],
+      "executeOnce": true,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "",
+          "name": "Google Gemini account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "jsCode": "const responseText = $input.first().json.candidates[0].content.parts[0].text;\nlet qualifications;\ntry {\n  qualifications = JSON.parse(responseText);\n} catch (e) {\n  const cleaned = responseText\n    .replace(/^```json\\s*/i, '')\n    .replace(/^```\\s*/i, '')\n    .replace(/```\\s*$/i, '')\n    .trim();\n  try {\n    qualifications = JSON.parse(cleaned);\n  } catch (e2) {\n    return $('Batches of 10').all().map(item => ({\n      json: {\n        ...item.json,\n        lead_score: 0,\n        intent_level: 'Cold',\n        urgency: 'Low',\n        genuine_inquiry: 'Maybe',\n        likely_customer: 'Maybe',\n        post_summary: 'AI parsing failed - needs manual review',\n        outreach_message: '',\n        ai_reasoning: `Parse error: ${e2.message}`,\n        status: 'Pending AI Review'\n      }\n    }));\n  }\n}\n\nreturn $('Batches of 10').all().map((item, index) => {\n  const q = qualifications[index] || {};\n  return {\n    json: {\n      ...item.json,\n      ...q,\n      status: 'New',\n      notification_sent: false,\n      created_at: new Date().toISOString(),\n      last_updated: new Date().toISOString()\n    }\n  };\n});"
+      },
+      "id": "8746a752-e17b-40d8-90b6-8ea44fbf990d",
+      "name": "Parse & Merge Scores",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        940
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "4281cc86-7e22-4739-9cd8-113df20eefae",
+      "name": "All Scored Posts",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        440,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Seen URLs",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "post_url": "={{ $json.post_url }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "e946af03-39e0-43cb-9283-57260485941f",
+      "name": "Write Seen URLs",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        880,
+        720
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "3c2f2e2a-1b3c-4dcf-bd8e-3c2f2e2a1b5f",
+              "leftValue": "={{ $json.lead_score }}",
+              "rightValue": "={{ $('Settings').first().json.min_lead_score }}",
+              "operator": {
+                "type": "number",
+                "operation": "largerEqual"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "5f2e9d21-0c93-4922-9b25-2b0157e3fbaf",
+      "name": "Lead Score ≥ Minimum?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "7c1a-4dcf-bd8e-3c2f2e2a1b5f",
+              "leftValue": "={{ $json.intent_level }}",
+              "rightValue": "Hot",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "bd8e-3c2f2e2a1b5f-2",
+              "leftValue": "={{ $json.urgency }}",
+              "rightValue": "High",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "826c3f62-1df2-4b64-9f49-de1d0589640c",
+      "name": "Hot or Urgent?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "=🔥 NEW HOT LEAD\n\n@{{ $json.username }} · r/{{ $json.subreddit }}\nCategory: {{ $json.category }}\nIntent: {{ $json.intent_level }} | Urgency: {{ $json.urgency }}\nScore: {{ $json.lead_score }}/10\n\n💬 Suggested outreach:\n{{ $json.outreach_message }}\n\n🔗 {{ $json.post_url }}",
+        "additionalFields": {}
+      },
+      "id": "626e1fe0-0524-4d80-a53f-ec0ffe39185d",
+      "name": "Telegram: Hot Lead Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        1540,
+        620
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "",
+          "name": "Telegram bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Lead Database",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{ $json.date }}",
+            "Platform": "={{ $json.platform }}",
+            "Username": "={{ $json.username }}",
+            "Subreddit": "={{ $json.subreddit }}",
+            "Post URL": "={{ $json.post_url }}",
+            "Post Title": "={{ $json.post_title }}",
+            "Post Summary": "={{ $json.post_summary }}",
+            "Intent Level": "={{ $json.intent_level }}",
+            "Urgency": "={{ $json.urgency }}",
+            "Likely Customer": "={{ $json.likely_customer }}",
+            "Lead Score": "={{ $json.lead_score }}",
+            "AI Reasoning": "={{ $json.ai_reasoning }}",
+            "Outreach Message": "={{ $json.outreach_message }}",
+            "Status": "={{ $json.status }}",
+            "Notification Sent": "={{ $('Hot or Urgent?').item.json.intent_level === 'Hot' || $('Hot or Urgent?').item.json.urgency === 'High' }}",
+            "Created At": "={{ $json.created_at }}",
+            "Last Updated": "={{ $json.last_updated }}",
+            "Category": "={{ $json.category }}",
+            "Genuine Inquiry": "={{ $json.genuine_inquiry }}",
+            "Source": "={{ $json.source }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "229ee501-43f7-4ca1-b597-d72756292ec7",
+      "name": "Save to Lead Database",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1760,
+        720
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const allLeads = $('All Scored Posts').all();\nconst qualifiedLeads = allLeads.filter(l => l.json.lead_score >= $('Settings').first().json.min_lead_score);\nconst hotLeads = allLeads.filter(l => l.json.intent_level === 'Hot');\n\nconst lastPostIds = {};\nallLeads.forEach(l => {\n  if (l.json.subreddit && l.json.post_id) {\n    lastPostIds[l.json.subreddit] = l.json.post_id;\n  }\n});\n\nreturn [{\n  json: {\n    timestamp: new Date().toISOString(),\n    total_posts_fetched: allLeads.length,\n    leads_qualified: qualifiedLeads.length,\n    hot_leads: hotLeads.length,\n    last_post_ids: JSON.stringify(lastPostIds),\n    execution_status: 'Success'\n  }\n}];"
+      },
+      "id": "e5ad9b1c-84b1-4b14-a189-e06906cc01a4",
+      "name": "Calculate Run Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Run Log",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ $json.timestamp }}",
+            "total_posts_fetched": "={{ $json.total_posts_fetched }}",
+            "leads_qualified": "={{ $json.leads_qualified }}",
+            "hot_leads": "={{ $json.hot_leads }}",
+            "last_post_ids": "={{ $json.last_post_ids }}",
+            "execution_status": "={{ $json.execution_status }}"
+          },
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "64c31f78-2c7f-4518-b13b-f13d5a5ff20d",
+      "name": "Update Run Log",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2200,
+        820
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "27518287-ef65-43d0-bda4-27888f73f588",
+              "name": "niche",
+              "type": "string",
+              "value": "a Canadian immigration consultancy (visas, study and work permits, PR, sponsorship)"
+            },
+            {
+              "id": "5da46bd9-deeb-481c-9c2d-47c6516ab278",
+              "name": "categories",
+              "type": "string",
+              "value": "Visitor|Student|Work|PR|Spousal|Super Visa|Other"
+            },
+            {
+              "id": "70f4f543-7f57-42d2-9b62-412e5855b73c",
+              "name": "subreddits",
+              "type": "array",
+              "value": "[\"ImmigrationCanada\", \"prCanada\", \"WorkPermitCanada\", \"immigration\"]"
+            },
+            {
+              "id": "8cbc26c3-abd3-49bd-b226-6792cde0733b",
+              "name": "use_reddit_api",
+              "type": "boolean",
+              "value": true
+            },
+            {
+              "id": "0bcbd9fe-a3d4-4fa3-be83-1e032feed519",
+              "name": "min_lead_score",
+              "type": "number",
+              "value": 6
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "id": "8d23fa02-6552-4e85-9919-0f76eb9a5e7c",
+      "name": "Settings",
+      "position": [
+        220,
+        310
+      ]
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "id": "55ff213b-c3c1-490a-9694-4e753d902b5b",
+      "name": "Run Manually",
+      "position": [
+        0,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 1 · Fetch new posts: Reddit API or Apify → normalise → skip already-seen URLs",
+        "height": 580,
+        "width": 2900,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        0
+      ],
+      "id": "48c91898-1005-4068-bd28-f9ef1a93c3ca",
+      "name": "Section 1"
+    },
+    {
+      "parameters": {
+        "content": "## 2 · Gemini qualifies 10 posts per call → hot/urgent leads alert on Telegram → lead database + run log",
+        "height": 520,
+        "width": 2300,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        140,
+        600
+      ],
+      "id": "06b04869-fabe-4902-b4e5-9ee9df7f9022",
+      "name": "Section 2"
+    },
+    {
+      "parameters": {
+        "content": "# Reddit Lead Finder\n*Finds people on Reddit asking for help you sell, scores buying intent with Gemini, and alerts you to hot leads*\n\n**Every 6 hours:** reads the last run state, fetches new posts from your subreddits (official Reddit API or Apify), skips anything already seen, then Gemini qualifies posts in batches of 10:\nintent (Hot/Warm/Cold), urgency, category, lead score 0-10, a summary, and a ready-to-send DM.\n\nLeads ≥ min score are saved to Sheets. Hot or urgent ones also go to Telegram.\n\n## Setup\n- Edit **Settings**: niche, categories, subreddits, API vs Apify, min score\n- Credentials: Reddit OAuth2 *or* Apify (Header Auth), Google Gemini, Google Sheets, Telegram\n- Replace `YOUR_GOOGLE_SHEET_ID` and `YOUR_TELEGRAM_CHAT_ID`\n- Sheet tabs: `Run Log`, `Seen URLs`, `Lead Database`",
+        "height": 620,
+        "width": 620,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -760,
+        0
+      ],
+      "id": "13e33233-5e24-4b3a-83d0-46d154d0ee3e",
+      "name": "Overview"
+    }
+  ],
+  "connections": {
+    "Every 6 Hours": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Manually": {
+      "main": [
+        [
+          {
+            "node": "Settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Settings": {
+      "main": [
+        [
+          {
+            "node": "Read Last Run State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Last Run State": {
+      "main": [
+        [
+          {
+            "node": "Extract Latest Run Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Latest Run Log": {
+      "main": [
+        [
+          {
+            "node": "Use Reddit API?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Use Reddit API?": {
+      "main": [
+        [
+          {
+            "node": "List Subreddits",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch Subreddits (Apify)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Subreddits": {
+      "main": [
+        [
+          {
+            "node": "Loop Subreddits",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Subreddits": {
+      "main": [
+        [
+          {
+            "node": "Transform & Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fetch Subreddit (Reddit API)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Subreddit (Reddit API)": {
+      "main": [
+        [
+          {
+            "node": "Wait 2s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 2s": {
+      "main": [
+        [
+          {
+            "node": "Loop Subreddits",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Subreddits (Apify)": {
+      "main": [
+        [
+          {
+            "node": "Transform & Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transform & Normalize": {
+      "main": [
+        [
+          {
+            "node": "Read Seen URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Seen URLs": {
+      "main": [
+        [
+          {
+            "node": "Deduplication",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deduplication": {
+      "main": [
+        [
+          {
+            "node": "Any New Posts?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any New Posts?": {
+      "main": [
+        [
+          {
+            "node": "No New Posts Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Batches of 10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No New Posts Metrics": {
+      "main": [
+        [
+          {
+            "node": "Update Run Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Batches of 10": {
+      "main": [
+        [
+          {
+            "node": "All Scored Posts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gemini: Qualify Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini: Qualify Batch": {
+      "main": [
+        [
+          {
+            "node": "Parse & Merge Scores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Merge Scores": {
+      "main": [
+        [
+          {
+            "node": "Batches of 10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "All Scored Posts": {
+      "main": [
+        [
+          {
+            "node": "Write Seen URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Seen URLs": {
+      "main": [
+        [
+          {
+            "node": "Lead Score ≥ Minimum?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead Score ≥ Minimum?": {
+      "main": [
+        [
+          {
+            "node": "Hot or Urgent?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hot or Urgent?": {
+      "main": [
+        [
+          {
+            "node": "Telegram: Hot Lead Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Save to Lead Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram: Hot Lead Alert": {
+      "main": [
+        [
+          {
+            "node": "Save to Lead Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to Lead Database": {
+      "main": [
+        [
+          {
+            "node": "Calculate Run Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Run Metrics": {
+      "main": [
+        [
+          {
+            "node": "Update Run Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
