@@ -1,0 +1,2460 @@
+{
+  "name": "AI SDR Outbound Engine — LinkedIn + Email",
+  "nodes": [
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "search",
+        "limit": 1,
+        "filterGroupsUi": {
+          "filterGroupsValues": [
+            {
+              "filtersUi": {
+                "filterValues": [
+                  {
+                    "propertyName": "hs_lead_status|enumeration",
+                    "value": "OUTREACH_LINKEDIN"
+                  },
+                  {
+                    "propertyName": "linkedin_invite_date|date",
+                    "operator": "HAS_PROPERTY"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "properties": [
+            "firstname",
+            "lastname",
+            "email",
+            "company_information",
+            "linkedin_invite_date"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [
+        -1568,
+        2160
+      ],
+      "id": "886f8797-7514-4c01-858a-4164e65940e1",
+      "name": "Search contacts"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "email": "={{ $('Search contacts').item.json.properties.email }}",
+        "additionalFields": {
+          "customPropertiesUi": {
+            "customPropertiesValues": [
+              {
+                "property": "email_sent",
+                "value": "=Subject: {{ $('Fix o/p structure').item.json.email_subject }}\n\nBody:\n{{ $('Fix o/p structure').item.json.email_body }}"
+              }
+            ]
+          },
+          "leadStatus": "EMAILED"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [
+        544,
+        2256
+      ],
+      "id": "5529f09d-99d9-43aa-9b65-7c2310b02023",
+      "name": "Create or update a contact"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=SYSTEM ROLE\nYou are <<SENDER_NAME>>, <<SENDER_TITLE>> at <<YOUR_COMPANY>>. You are writing a short, highly personalised cold email.\n\nOBJECTIVE\n1. **Clean Data:** Extract a natural \"First Name\" and \"Short Company Name\".\n2. **Extract Context:** Analyse the raw company info to find the company's \"Key Focus\" (e.g. \"commercial lending\", \"risk management\", \"energy trading\").\n3. **Personalise:** Use the \"Key Focus\" so the bridge sentence sounds researched, not templated.\n4. **Format:** Output strict JSON with proper spacing and a tight signature.\n\nPROSPECT INPUT DATA\nName: {{ $('Search contacts').item.json.properties.firstname }}\nRaw Company Info: {{ $('Search contacts').item.json.properties.company_information }}\n\nDATA CLEANING & CONTEXT RULES\n1. **Name:** Title Case (e.g. \"HOLLY\" -> \"Holly\").\n2. **Short Company Name:** Conversational name only (e.g. \"Acme\" NOT \"Acme Financial Services Holdings Inc\").\n3. **Key Focus:** A 2-5 word phrase describing what they do.\n   - *Example Data:* \"Global leader in risk management and compliance...\"\n   - *Key Focus:* \"leadership in risk management\" or \"global compliance operations\"\n   - *Fallback:* If data is empty, use \"<<DEFAULT_FOCUS>>\".\n\nTEMPLATE OPTIONS\n\nOPTION 1 (Target: general fit, or if industry is unclear)\nSubject: Quick question about [workflow] at [Short Company Name]\nBody:\n\"Hi [Name],\n\nHope you're doing well. I sent you a LinkedIn request a few days ago but wanted to reach out directly.\n\n<<ONE_LINE_VALUE_PROP>>\n\nGiven [Short Company Name]'s focus on [Key Focus], I'd love to show you how we can help.\n\nCould we schedule a quick call next week?\n\nBest,\n<<SENDER_FIRST_NAME>>\"\n\nOPTION 2 (Target: <<SEGMENT_2>>)\nSubject: <<SEGMENT_2_SUBJECT>> for [Short Company Name]\nBody:\n\"Hi [Name],\n\nHope this message finds you well. <<FOUNDER_STORY_ONE_LINER>>\n\n<<PRODUCT_CAPABILITY_AND_PROOF>>\n\nGiven [Short Company Name]'s [Key Focus], thought it might be worth a quick conversation.\n\nAre you available for a brief call next week?\n\nBest,\n<<SENDER_FIRST_NAME>>\"\n\nOPTION 3 (Target: large enterprises / high-volume teams)\nSubject: How we cut <<METRIC>> by <<X%>>\nBody:\n\"Hi [Name],\n\nHope you're doing well. Tried connecting on LinkedIn but wanted to reach out directly.\n\n<<SOCIAL_PROOF_AND_CASE_STUDY>>\n\nGiven [Short Company Name]'s [Key Focus], thought it might be worth a quick conversation to see if this could help your team.\n\nAvailable for a 15-minute call next week?\n\nBest,\n<<SENDER_FIRST_NAME>>\"\n\nOUTPUT INSTRUCTIONS\n- Select the BEST option based on the industry context.\n- Fill in [Name], [Short Company Name] and [Key Focus].\n- Make sure the \"Given...\" sentence reads naturally.\n- **Spacing:** Use `\\n\\n` for paragraph breaks.\n- **Signature:** Use `Best,\\n<<SENDER_FIRST_NAME>>` (single break).\n- Output strictly valid JSON.\n\nJSON STRUCTURE\n{\n  \"subject\": \"The selected subject line\",\n  \"body\": \"The selected body\"\n}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        -688,
+        2176
+      ],
+      "id": "4d0a7273-18f0-42a6-959e-b1635659a637",
+      "name": "Message a model",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "maxTries": 3,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "",
+          "name": "Google Gemini account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -976,
+        2160
+      ],
+      "id": "dbd2edf2-e5cc-4562-bed0-3eff5d9c5d6f",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Smartleads email",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "email": "={{ $json.email }}",
+            "generated_subject": "={{ $json.email_subject }}",
+            "generated_body": "={{ $json.email_body }}",
+            "first_name": "={{ $json.firstname }}",
+            "last_name": "={{ $json.lastname }}",
+            "company": "={{ $json.company }}"
+          },
+          "matchingColumns": [
+            "email"
+          ],
+          "schema": [
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "first_name",
+              "displayName": "first_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "last_name",
+              "displayName": "last_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "company",
+              "displayName": "company",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "generated_subject",
+              "displayName": "generated_subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "generated_body",
+              "displayName": "generated_body",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -96,
+        2176
+      ],
+      "id": "190d4841-f65d-476c-b18c-160dfc30b0f7",
+      "name": "Append or update row in sheet"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#outreach-alerts",
+          "mode": "name"
+        },
+        "text": "Leads Sent to Smartlead",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        -160,
+        1760
+      ],
+      "id": "08c33c78-f6ef-4f3c-b529-b0f0b1c2d82a",
+      "name": "Send a message",
+      "executeOnce": true,
+      "retryOnFail": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://server.smartlead.ai/api/v1/campaigns/YOUR_SMARTLEAD_CAMPAIGN_ID/leads?api_key=YOUR_SMARTLEAD_API_KEY",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n  {\n    \"lead_list\": [\n      {\n        \"email\": $json.email,\n        \"first_name\": $json.first_name || $json.firstname,\n        \"last_name\": $json.last_name || $json.lastname,\n        \"company_name\": $json.company,\n        \"custom_fields\": {\n          \"gemini_subject\": $json.generated_subject,\n          \"gemini_body\": $json.generated_body\n        }\n      }\n    ]\n  }\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        208,
+        2176
+      ],
+      "id": "dc5d7d1c-34fe-4c7b-9597-e934c19c6b7e",
+      "name": "Push to Smartlead"
+    },
+    {
+      "parameters": {
+        "content": "## Push Customized Email to Smartlead Campaign",
+        "height": 656,
+        "width": 720,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        64,
+        1920
+      ],
+      "typeVersion": 1,
+      "id": "1623d8e2-5fa7-495e-8f24-f113b8afc812",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Generating Customized Email",
+        "height": 656,
+        "width": 1200
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1136,
+        1920
+      ],
+      "typeVersion": 1,
+      "id": "5db24b26-8d9b-490e-8e21-4bb61abd0f19",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Workflow update to slack\n",
+        "height": 256,
+        "width": 368,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -304,
+        1664
+      ],
+      "typeVersion": 1,
+      "id": "7cc048d8-67a3-41d9-be5c-b13931509abd",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "6629495b-9eb8-43ef-9c70-9f895ac35236",
+              "leftValue": "={{ $json.properties.linkedin_invite_date }}",
+              "rightValue": "={{ $today.minus({days: 3}) }}",
+              "operator": {
+                "type": "dateTime",
+                "operation": "before"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        -1344,
+        2160
+      ],
+      "id": "ba1fc17a-5814-4844-834e-79977c145a55",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "content": "## Filter Leads for >3 Days\n",
+        "height": 656,
+        "width": 880,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2016,
+        1920
+      ],
+      "typeVersion": 1,
+      "id": "f06845eb-d659-4187-9c15-863b296d82a1",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "={{\n  {\n    \"email_subject\": JSON.parse($json.content.parts[0].text).subject,\n    \"email_body\": JSON.parse($json.content.parts[0].text).body,\n    \"email\": $('Loop Over Items').item.json.properties.email,\n    \"firstname\": $('Loop Over Items').item.json.properties.firstname,\n    \"lastname\": $('Loop Over Items').item.json.properties.lastname,\n    \"company\": $('Loop Over Items').item.json.properties.company_information\n  }\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -336,
+        2176
+      ],
+      "id": "3851b2c1-0aed-4735-874c-cc6e1ae8c99d",
+      "name": "Fix o/p structure"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9,
+              "triggerAtMinute": 40
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1856,
+        2160
+      ],
+      "id": "cd2692c8-7d4b-41ed-8051-51bb0202ec6f",
+      "name": "9:40 am"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apollo.io/api/v1/mixed_people/api_search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Api-Key",
+              "value": "YOUR_APOLLO_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n\"person_titles\": [\n\"Chief Credit Officer\",\n\"Head of Credit\",\n\"Head of Credit Risk\",\n\"VP of Underwriting\",\n\"Credit Manager\",\n\"Senior Credit Analyst\",\n\"VP of Operations\",\n\"Chief Risk Officer\"\n],\n\"organization_locations\": [\n\"United States\",\n\"Canada\",\n\"Mexico\"\n],\n\"organization_num_employees_ranges\": [\n\"51,100\",\n\"101,200\",\n\"201,500\"\n],\n\"revenue_range\": {\n\"min\": 10000000,\n\"max\": 500000000\n},\n\"contact_email_status\": [\n\"verified\"\n],\n\"organization_buying_intent_topic_ids\": [\n\"YOUR_APOLLO_INTENT_TOPIC_ID\"\n],\n\"organization_buying_intent_score_range\": {\n\"min\": 80,\n\"max\": 100\n},\n\n\"page\": {{ $json.CurrentPage || 1 }},\n\"per_page\": 10\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -1136,
+        544
+      ],
+      "id": "67be2fe5-51f5-42f7-8279-16b013e8dd88",
+      "name": "Scan Leads"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apollo.io/api/v1/people/match",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Api-Key",
+              "value": "YOUR_APOLLO_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"id\": \"{{ $json.id }}\",\n  \"reveal_personal_emails\": true\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -704,
+        544
+      ],
+      "id": "5cbc1320-1ae8-463c-8c81-b5d790b3c8a9",
+      "name": "Unlock leads"
+    },
+    {
+      "parameters": {
+        "jsCode": "const blocklist = [\n  // --- YOUR SPECIFIC EXCLUSIONS (existing customers, open deals, competitors) ---\n  \"Example Customer Inc\",\n  \"Example Competitor LLC\",\n\n  // --- ICP BROAD EXCLUSIONS (Mortgage, VC, Big Banks) ---\n  \"Fannie Mae\",\n  \"Freddie Mac\",\n  \"Ginnie Mae\",\n  \"Mortgage\",\n  \"Home Loans\",\n  \"Rocket Mortgage\",\n  \"LendingTree\",\n  \"LoanDepot\",\n  \"Venture Capital\",\n  \"Ventures\",\n  \"Andreessen Horowitz\",\n  \"Sequoia\",\n  \"JPMorgan\",\n  \"Chase\",\n  \"Bank of America\",\n  \"BofA\",\n  \"Citi\",\n  \"Citigroup\",\n  \"Wells Fargo\",\n  \"Goldman Sachs\",\n  \"Morgan Stanley\",\n  \"HSBC\",\n  \"PNC Bank\",\n  \"U.S. Bank\",\n  \"Truist\",\n  \"Capital One\",\n  \"TD Bank\",\n  \"Bank of New York Mellon\",\n  \"State Street\",\n  \"Barclays\",\n  \"UBS\",\n  \"Deutsche Bank\",\n  \"BMO\",\n  \"American Express\",\n  \"Citizens Bank\",\n  \"First Citizens\",\n  \"Fifth Third\",\n  \"M&T Bank\",\n  \"Huntington\",\n  \"KeyBank\",\n  \"Ally\",\n  \"Santander\",\n  \"Regions Bank\",\n  \"Discover\",\n  \"Northern Trust\",\n  \"Synchrony\",\n  \"Comerica\",\n  \"Zions\",\n  \"Webster Bank\",\n  \"First Horizon\"\n];\n\nconst people = items[0].json.people;\n\nconst validLeads = people.filter(person => {\n  const orgName = person.organization?.name || \"\";\n\n  const isBlocked = blocklist.some(blockedItem => \n    orgName.toLowerCase().includes(blockedItem.toLowerCase())\n  );\n\n  return !isBlocked;\n});\n\nreturn validLeads.map(person => ({ json: person }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -928,
+        544
+      ],
+      "id": "9430183b-cd2f-4ecd-8b37-616f39f807c3",
+      "name": "blocklist"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Page",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1408,
+        544
+      ],
+      "id": "2f0f7440-8ea4-475a-903a-4cf92b148135",
+      "name": "Get row(s) in sheet"
+    },
+    {
+      "parameters": {
+        "content": "## Apollo paid plan prompt - for Scan Leads node\n\n{\n\"person_titles\": [\n\"Chief Credit Officer\",\n\"Head of Credit\",\n\"Head of Credit Risk\",\n\"VP of Underwriting\",\n\"Credit Manager\",\n\"Senior Credit Analyst\",\n\"VP of Operations\",\n\"Chief Risk Officer\"\n],\n\"organization_locations\": [\n\"United States\",\n\"Canada\",\n\"Mexico\"\n],\n\"organization_num_employees_ranges\": [\n\"51,100\",\n\"101,200\",\n\"201,500\"\n],\n\"revenue_range\": {\n\"min\": 10000000,\n\"max\": 500000000\n},\n\"contact_email_status\": [\n\"verified\"\n],\n\"organization_buying_intent_topic_ids\": [\n\"YOUR_APOLLO_INTENT_TOPIC_ID\"\n],\n\"organization_buying_intent_score_range\": {\n\"min\": 80,\n\"max\": 100\n},\n\n\"page\": {{ $json.CurrentPage || 1 }},\n\"per_page\": 10\n}",
+        "height": 864,
+        "width": 560,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1264,
+        192
+      ],
+      "typeVersion": 1,
+      "id": "d8042712-dae1-484b-9be2-25e6fc3ac5d0",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## Apollo free plan prompt - for Scan Leads node\n{\n  \"person_titles\": [\n    \"Chief Credit Officer\",\n    \"Head of Credit\",\n    \"Head of Credit Risk\",\n    \"VP of Underwriting\",\n    \"Credit Manager\",\n    \"Senior Credit Analyst\",\n    \"VP of Operations\",\n    \"Chief Risk Officer\"\n  ],\n  \"organization_locations\": [\n    \"United States\",\n    \"Canada\",\n    \"Mexico\"\n  ],\n  \"organization_num_employees_ranges\": [\n    \"51,100\",\n    \"101,200\",\n    \"201,500\"\n  ],\n\n\n  \"contact_email_status\": [\n    \"verified\"\n  ],\n  \n  \n  \"page\": {{ $json.CurrentPage || 1 }},\n  \"per_page\": 2\n}",
+        "height": 864,
+        "width": 528,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1888,
+        208
+      ],
+      "typeVersion": 1,
+      "id": "fe3adb1d-6f74-4cb9-bfb6-f3ec2c0e309f",
+      "name": "Sticky Note5"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1648,
+        544
+      ],
+      "id": "c638afd6-ce2b-4cf9-a2a8-88097254610c",
+      "name": "9 am"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Page",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "CurrentPage": "={{ $('Get row(s) in sheet').item.json.CurrentPage + 1 }}",
+            "row_number": 2
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "CurrentPage",
+              "displayName": "CurrentPage",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        496,
+        544
+      ],
+      "id": "73c0a998-7fa1-4679-83e7-73a4b81b68d4",
+      "name": "Update Page in sheet"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "email": "={{ $json.person.email }}",
+        "additionalFields": {
+          "annualRevenue": "={{ $json.person.organization.organization_revenue }}",
+          "companyName": "={{ $json.person.organization.name }}",
+          "customPropertiesUi": {
+            "customPropertiesValues": [
+              {
+                "property": "company_information",
+                "value": "={{ $json.person.organization.short_description }}"
+              },
+              {
+                "property": "estimated_employees",
+                "value": "={{ $('Unlock leads').item.json.person.organization.estimated_num_employees }}"
+              }
+            ]
+          },
+          "firstName": "={{ $json.person.first_name }}",
+          "industry": "={{ $json.person.organization.industry }}",
+          "jobTitle": "={{ $json.person.title }}",
+          "lastName": "={{ $json.person.last_name }}",
+          "leadStatus": "new",
+          "linkedinUrl": "={{ $json.person.linkedin_url }}"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [
+        160,
+        544
+      ],
+      "id": "4173ea8d-c123-44e9-9bd8-319d9b133669",
+      "name": "Create or update a contact1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "22eb6e46-e8d8-4b63-8a42-4c6c2ac666b1",
+              "leftValue": "={{ $json.person.email }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "0be96ca5-9c67-400f-8ed4-4d29ced9c5b1",
+              "leftValue": "={{ $json.person.linkedin_url }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        -112,
+        544
+      ],
+      "id": "e8813b82-2390-4398-88a0-60ed35056894",
+      "name": "Filter1"
+    },
+    {
+      "parameters": {
+        "content": "## Get Apollo Page\n",
+        "height": 720,
+        "width": 512,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1728,
+        240
+      ],
+      "typeVersion": 1,
+      "id": "bd8b0ee0-a4f3-4a5b-890b-0c61be449419",
+      "name": "Sticky Note6"
+    },
+    {
+      "parameters": {
+        "content": "## Update Apollo Page\n",
+        "height": 720,
+        "width": 560,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        384,
+        240
+      ],
+      "typeVersion": 1,
+      "id": "6cf0e430-77dd-4cde-88ea-c1564b0bfb65",
+      "name": "Sticky Note7"
+    },
+    {
+      "parameters": {
+        "content": "## Scan And Unlock Leads\n",
+        "height": 720,
+        "width": 1284
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1216,
+        240
+      ],
+      "typeVersion": 1,
+      "id": "585a102d-3e9b-470e-9ed2-fb4997fe03e6",
+      "name": "Sticky Note8"
+    },
+    {
+      "parameters": {
+        "content": "## Update CRM\n",
+        "height": 720,
+        "width": 320,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        64,
+        240
+      ],
+      "typeVersion": 1,
+      "id": "2a49acfb-c912-49f1-8ca4-b59a923f88a6",
+      "name": "Sticky Note9"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#outreach-alerts",
+          "mode": "name"
+        },
+        "text": "Leads Scraped from apollo",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        752,
+        544
+      ],
+      "id": "f7daee3d-b2fe-479a-94a0-7387e4606e63",
+      "name": "Send a message1",
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "agentId": "YOUR_PHANTOMBUSTER_LAUNCH_AGENT_ID",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.phantombuster",
+      "typeVersion": 1,
+      "position": [
+        224,
+        1280
+      ],
+      "id": "bef37283-1cd9-431c-96d0-5e4577c0a598",
+      "name": "Launch Agent",
+      "credentials": {
+        "phantombusterApi": {
+          "id": "",
+          "name": "PhantomBuster account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9,
+              "triggerAtMinute": 15
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -2160,
+        1264
+      ],
+      "id": "b71b0a53-2858-4401-a3a1-e2504417d204",
+      "name": "Batch Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "77fc1df5-27cd-466c-a987-2ee11858f679",
+              "name": "mode",
+              "value": "salesnav",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1856,
+        1264
+      ],
+      "id": "f7fc7ff5-e1ce-412e-8f1b-186dc46e5de2",
+      "name": "Config Fields"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "search",
+        "limit": 20,
+        "filterGroupsUi": {
+          "filterGroupsValues": [
+            {
+              "filtersUi": {
+                "filterValues": [
+                  {
+                    "propertyName": "hs_lead_status|enumeration",
+                    "value": "new"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "properties": [
+            "firstname",
+            "lastname",
+            "email",
+            "hs_linkedin_url",
+            "hs_lead_status",
+            "company_information",
+            "company",
+            "jobtitle",
+            "industry"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [
+        -1616,
+        1264
+      ],
+      "id": "328bc371-d7b1-4f23-8ab5-bfe9ddbdf98e",
+      "name": "Fetch Leads",
+      "credentials": {
+        "hubspotOAuth2Api": {
+          "id": "",
+          "name": "HubSpot account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Retrieve all 5 contacts from the previous node\nconst contacts = $('Fetch Leads').all();\n\nreturn contacts.map(contact => {\n  const props = contact.json.properties;\n  return {\n    json: {\n      argument: {\n        LinkedinUrl: props.hs_linkedin_url,\n        name: props.firstname,\n        company: props.company,\n        jobtitle: props.jobtitle,\n        industry: props.industry,\n        company_information: props.company_information\n      }\n    }\n  }\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1344,
+        1264
+      ],
+      "id": "fd8dc57c-77ec-4a51-bf25-c6e2ab9206db",
+      "name": "Normalize Data"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -1056,
+        1184
+      ],
+      "id": "6ae606f5-029c-4d6c-a679-3b3d9d92815c",
+      "name": "Loop"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=ROLE\nYou are <<SENDER_FIRST_NAME>>, <<SENDER_TITLE>> at <<YOUR_COMPANY>>. You are connecting with peers in <<TARGET_SECTOR>>. Vibe: a founder, not a sales rep. Tone: warm, low-pressure and curious. Goal: start a professional connection based on shared industry background or relevant work.\n\nINPUT VARIABLES\nTarget Name: {{ $('Fetch Leads').item.json.properties.firstname }}\n\nTarget Company: {{ $('Fetch Leads').item.json.properties.company }}\n\nTarget Role: {{ $('Fetch Leads').item.json.properties.jobtitle }}\n\nTarget Industry: {{ $('Fetch Leads').item.json.properties.industry }}\n\nCompany Context: {{ $('Fetch Leads').item.json.properties.company_information }}\n\nINSTRUCTIONS\nSTEP 1: INDUSTRY NORMALISATION\nConvert Target Industry into a natural, conversational noun phrase (max 2-3 words).\n\nInput: \"International Banking & Capital Markets\" -> Output: \"Capital Markets\"\n\nInput: \"Transportation & Trucking\" -> Output: \"Logistics\"\n\nInput: \"Banking\" -> Output: \"Banking\"\n\nSTEP 2: SELECT OPENING\nRandomly select ONE of these warm openers to replace [RandomOpening]:\n\n\"Hope you're having a great week.\"\n\n\"Hope you're doing well.\"\n\n\"Hope things are going well.\"\n\n\"Hope this message finds you well.\"\n\n\"Hope you're having a good day.\"\n\nSTEP 3: LOGIC & GENERATION\nAnalyse the Company Context and Target Role, then pick the matching option.\n\nOPTION A (Trigger: high volume / operational teams)\n\nLogic: Use if keywords include <<KEYWORDS_A>>.\n\nTemplate: Focus on speed, using the \"Stood Out\" structure.\n\n\"Hi [Target Name], [RandomOpening] Your experience in [RefinedIndustry] stood out to me. <<ONE_LINE_BACKGROUND_A>> Would enjoy connecting if you're open to it. Best, <<SENDER_FIRST_NAME>>\"\n\nOPTION B (Trigger: complexity / corporate)\n\nLogic: Use if keywords include <<KEYWORDS_B>>.\n\nTemplate: Focus on accuracy, using the \"Saw Your Role\" structure.\n\n\"Hi [Target Name], [RandomOpening] Saw your role in [RefinedIndustry] and thought it'd be worth reaching out. <<ONE_LINE_BACKGROUND_B>> Always interested in connecting with people in the space. Best, <<SENDER_FIRST_NAME>>\"\n\nOPTION C (Trigger: general / fallback)\n\nLogic: Use if the context is unclear or generic.\n\nTemplate: Focus on the founder story, using the \"Came Across Profile\" structure.\n\n\"Hi [Target Name], [RandomOpening] I came across your profile and your work in [RefinedIndustry]. <<ONE_LINE_FOUNDER_STORY>> Would be great to connect and exchange insights. Best, <<SENDER_FIRST_NAME>>\"\n\nSTRICT CONSTRAINTS\nLength: Output MUST be under 300 characters (LinkedIn connection-note limit).\n\nGrammar: The transition from the industry hook to the value prop must be smooth.\n\nOutput: Generate ONLY the final message body. No pre-text."
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -624,
+        1280
+      ],
+      "id": "a6409f37-f0fd-4cd8-9e15-7c2b3b832c54",
+      "name": "Outreach Message",
+      "alwaysOutputData": false,
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "maxTries": 2,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "",
+          "name": "Google Gemini account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "email": "={{ $('Fetch Leads').item.json.properties.email }}",
+        "additionalFields": {
+          "customPropertiesUi": {
+            "customPropertiesValues": [
+              {
+                "property": "linkedin_message",
+                "value": "={{ $json.LinkedIn_message }}"
+              }
+            ]
+          },
+          "leadStatus": "outreach_on_linkedin"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [
+        -96,
+        1376
+      ],
+      "id": "78871bf5-0aa2-4446-8131-f1fbdf96be0f",
+      "name": "Update Lead Status",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "hubspotOAuth2Api": {
+          "id": "",
+          "name": "HubSpot account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Salesnav Linkedin",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "LinkedinUrl": "={{ $('Loop').item.json.argument.LinkedinUrl }}",
+            "LinkedIn_message": "={{ $json.content.parts[0].text.replace(/^\"|\"$/g, '') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "LinkedinUrl",
+              "displayName": "LinkedinUrl",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "LinkedIn_message",
+              "displayName": "LinkedIn_message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -304,
+        1360
+      ],
+      "id": "4b444e33-8d92-433d-b7c7-7a8dcc5467c7",
+      "name": "Message Logs",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -576,
+        1104
+      ],
+      "id": "a784ea5b-31ea-4cad-9cdd-e9782a031551",
+      "name": "Output Buffer"
+    },
+    {
+      "parameters": {
+        "amount": 30
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -832,
+        1280
+      ],
+      "id": "6891858a-51f1-4554-a19e-ee498c2ad479",
+      "name": "Rate Limit"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#outreach-alerts",
+          "mode": "name"
+        },
+        "text": "Leads sent to Phantombuster",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        544,
+        1280
+      ],
+      "id": "892f23f9-4560-4472-85c5-8ed211ea2d5d",
+      "name": "Update Team",
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Process Leads\n",
+        "height": 544,
+        "width": 816
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1952,
+        1056
+      ],
+      "typeVersion": 1,
+      "id": "e727e030-c3af-4e51-9ff2-24fb41b95c52",
+      "name": "Sticky Note11"
+    },
+    {
+      "parameters": {
+        "content": "## Launch Campaign",
+        "height": 544,
+        "width": 704,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        96,
+        1056
+      ],
+      "typeVersion": 1,
+      "id": "55033542-3a55-4d52-a056-1f54f08e1d8a",
+      "name": "Sticky Note12"
+    },
+    {
+      "parameters": {
+        "content": "## Generate Message",
+        "height": 544,
+        "width": 1232,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1136,
+        1056
+      ],
+      "typeVersion": 1,
+      "id": "70a58646-599b-480e-9d24-7bdd0ff97139",
+      "name": "Sticky Note13"
+    },
+    {
+      "parameters": {
+        "operation": "getOutput",
+        "agentId": "YOUR_PHANTOMBUSTER_OUTPUT_AGENT_ID",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.phantombuster",
+      "typeVersion": 1,
+      "position": [
+        -1488,
+        3104
+      ],
+      "id": "c9281b6c-2c25-4a35-8ca5-3ffa32db2023",
+      "name": "LinkedIn Outreach Output"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#outreach-alerts",
+          "mode": "name"
+        },
+        "text": "={{ $json.email }} HAS RESPONDED ON EMAIL",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        -352,
+        3712
+      ],
+      "id": "81213173-9672-4620-825c-1b747e3317da",
+      "name": "Send a message2"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "search",
+        "filterGroupsUi": {
+          "filterGroupsValues": [
+            {
+              "filtersUi": {
+                "filterValues": [
+                  {
+                    "propertyName": "email|string",
+                    "operator": "CONTAINS_TOKEN",
+                    "value": "={{ $json.email }}"
+                  },
+                  {
+                    "propertyName": "hs_lead_status|enumeration",
+                    "value": "emailed"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "properties": [
+            "firstname",
+            "lastname",
+            "email",
+            "hs_lead_status"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [
+        -864,
+        3712
+      ],
+      "id": "d213b503-7a6b-4363-aa4d-5490f9ec5b26",
+      "name": "Search contacts2"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "email": "={{ $('Search contacts2').item.json.properties.email }}",
+        "additionalFields": {
+          "leadStatus": "responded_on_email"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [
+        -64,
+        3632
+      ],
+      "id": "a184c88c-659f-47b0-980c-788790ed0f7d",
+      "name": "Create or update a contact2"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "data",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -1232,
+        3712
+      ],
+      "id": "ebebf1b7-743c-4aaa-b129-6a6c3d69c3b4",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0850c3b6-07ac-4816-a292-bdc75b38b514",
+              "leftValue": "{{ $('Search contacts2').item.json.properties.hs_lead_status}}",
+              "rightValue": "responded_on_email",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        -544,
+        3712
+      ],
+      "id": "f55d75ce-1677-4b3f-8416-22764026a491",
+      "name": "Filter 3"
+    },
+    {
+      "parameters": {
+        "url": "https://server.smartlead.ai/api/v1/campaigns/YOUR_SMARTLEAD_CAMPAIGN_ID/leads",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "api_key",
+              "value": "YOUR_SMARTLEAD_API_KEY"
+            },
+            {
+              "name": "status",
+              "value": "STOPPED"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -1456,
+        3712
+      ],
+      "id": "b100c8bf-4c00-45b5-8005-7c747763b40a",
+      "name": "Get output from Smartlead"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "email": "={{ $json.properties.email }}",
+        "additionalFields": {
+          "customPropertiesUi": {
+            "customPropertiesValues": [
+              {
+                "property": "linkedin_invite_date",
+                "value": "={{ Date.parse($('LinkedIn Outreach Output').item.json.invitationDate.split('T')[0]) }}"
+              }
+            ]
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [
+        -864,
+        3088
+      ],
+      "id": "fd31dcca-3402-4f99-beb2-83d196b2eea3",
+      "name": "Update LinkedIn Invite Date"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -704,
+        3712
+      ],
+      "id": "c7577864-4b9f-4b8b-93bf-443500985795",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 0 12,17 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -1920,
+        3280
+      ],
+      "id": "aef96a8c-0ca0-44c9-87b3-286001863400",
+      "name": "12,5 pm"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "642e80d6-5de4-4685-a309-a661ff047519",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1104,
+        3104
+      ],
+      "id": "99d92d89-398b-44a5-905f-745643399613",
+      "name": "If ID is valid"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "operation": "search",
+        "filterGroupsUi": {
+          "filterGroupsValues": [
+            {
+              "filtersUi": {
+                "filterValues": [
+                  {
+                    "propertyName": "hs_linkedin_url|string",
+                    "operator": "CONTAINS_TOKEN",
+                    "value": "={{ $json.linkedinProfileUrl }}"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "properties": [
+            "firstname",
+            "lastname",
+            "email",
+            "hs_lead_status",
+            "hs_linkedin_url"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [
+        -1280,
+        3104
+      ],
+      "id": "787e32dc-6f74-4ed4-99c1-f9ae5e32279e",
+      "name": "Get matching linkedin contacts in hubspot"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1f8ca7c0-8d9f-43f8-be81-c364e4248a9c",
+              "name": "linkedinInviteISO",
+              "value": "={{ new Date(Number($json.properties.linkedin_invite_date.value)).toISOString() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -608,
+        3088
+      ],
+      "id": "71486bd5-dfa4-463b-a9ae-ca8b660d3b63",
+      "name": "Set Invite Date format"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#outreach-alerts",
+          "mode": "name"
+        },
+        "text": "={{ $json.properties.hs_linkedin_url.value }} has accepted connection request",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        496,
+        2736
+      ],
+      "id": "158729fb-60b7-4a35-9813-aa720e4d5597",
+      "name": "new update slack"
+    },
+    {
+      "parameters": {
+        "sendTo": "you@example.com",
+        "subject": "Smartlead Update",
+        "message": "={{ $json.properties.hs_linkedin_url.value }} has accepted connection request",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        496,
+        2944
+      ],
+      "id": "10dc0915-80df-44ba-b06c-bd34ba29a676",
+      "name": "new update gmail"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "email": "={{ $('Get matching linkedin contacts in hubspot').item.json.properties.email }}",
+        "additionalFields": {
+          "leadStatus": "connected_on_linkedin"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [
+        288,
+        2800
+      ],
+      "id": "a6cd4e73-8904-49c8-890a-a6b14510ab28",
+      "name": "Update Status to connected"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "email": "={{ $('Get matching linkedin contacts in hubspot').item.json.properties.email }}",
+        "additionalFields": {
+          "leadStatus": "no_response_on_linkedin"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [
+        304,
+        3056
+      ],
+      "id": "e01f18ba-49b8-441a-bd97-f42930bbdf50",
+      "name": "Update status to no response"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "8fcadc92-7c65-4794-bd58-07f0ea676b44",
+              "leftValue": "={{ $('LinkedIn Outreach Output').item.json.requestAccepted }}",
+              "rightValue": "=YES",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "adcc8aee-6bc3-4617-9b38-b8fe8b9ecbb5",
+              "leftValue": "={{ $('Get matching linkedin contacts in hubspot').item.json.properties.hs_lead_status }}",
+              "rightValue": "outreach_on_linkedin",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        -176,
+        3280
+      ],
+      "id": "01cebf69-4db8-4004-89e7-eb02d3603f76",
+      "name": "connected, not updated"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "email": "={{ $('Get matching linkedin contacts in hubspot').item.json.properties.email }}",
+        "additionalFields": {
+          "leadStatus": "connected_on_linkedin"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2.2,
+      "position": [
+        64,
+        3392
+      ],
+      "id": "e4792161-0d88-415f-bf1e-207dcc68c332",
+      "name": "Connection status update"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#outreach-alerts",
+          "mode": "name"
+        },
+        "text": "={{ $json.properties.hs_linkedin_url.value }} has accepted connection request",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        512,
+        3248
+      ],
+      "id": "b57db37f-1bca-45ee-80fd-efe2eabe0ef0",
+      "name": "new update slack1"
+    },
+    {
+      "parameters": {
+        "sendTo": "you@example.com",
+        "subject": "Smartlead Update",
+        "message": "={{ $json.properties.hs_linkedin_url.value }} has accepted connection request",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        496,
+        3424
+      ],
+      "id": "b19e8fcb-88bf-4647-bd72-8e388104ba5f",
+      "name": "New update Gmail 1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "2e3a8eea-bfbb-492d-8230-4de092897af7",
+              "leftValue": "={{ new Date(Number($json.properties.linkedin_invite_date.value)).toISOString() }}",
+              "rightValue": "={{ $now.minus({ days: 3 }).toISO() }}",
+              "operator": {
+                "type": "dateTime",
+                "operation": "before"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -192,
+        2992
+      ],
+      "id": "685f10c0-7e9c-4596-a7a1-db86ac0cff46",
+      "name": ">3 days"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "7999b616-2d16-4449-8e54-8457b50ecf22",
+              "leftValue": "linkedin_invite_date",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "41720392-1a80-4e85-a678-ac22810b61c0",
+              "leftValue": "={{ new Date(Number($json.properties.linkedin_invite_date.value)).toISOString() }}",
+              "rightValue": "={{ $now.minus({ days: 3 }).toISO() }}",
+              "operator": {
+                "type": "dateTime",
+                "operation": "before"
+              }
+            },
+            {
+              "id": "e19d9288-f95c-450a-b944-63091026e194",
+              "leftValue": "={{ $('Get matching linkedin contacts in hubspot').item.json.properties.hs_lead_status }}",
+              "rightValue": "connected_on_linkedin",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            },
+            {
+              "id": "26f7cb54-7391-4e87-bf77-7f64926b1e02",
+              "leftValue": "={{ $json.properties.linkedin_invite_date?.value }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -384,
+        3088
+      ],
+      "id": "299ceb59-319b-49a6-b5d6-3c744758a369",
+      "name": "date>3,exist, not = connected"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "0c36bb17-e29c-4e49-a34b-c8211826c03e",
+              "leftValue": "={{ $('LinkedIn Outreach Output').item.json.requestAccepted }}",
+              "rightValue": "YES",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        16,
+        2848
+      ],
+      "id": "3c7488e9-6d9c-40db-970a-eec9e0f0e2e9",
+      "name": "req accepted"
+    },
+    {
+      "parameters": {
+        "content": "## Notify LinkedIn Connection updates",
+        "height": 912,
+        "width": 2304,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1600,
+        2672
+      ],
+      "typeVersion": 1,
+      "id": "e48f61e4-fa30-4131-8fd7-7ffef5b6def3",
+      "name": "Sticky Note14"
+    },
+    {
+      "parameters": {
+        "content": "## Smartlead Email Updates",
+        "height": 400,
+        "width": 2304,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1600,
+        3584
+      ],
+      "typeVersion": 1,
+      "id": "6243f56d-5885-4710-a2a1-aa9bde6dcf7b",
+      "name": "Sticky Note15"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "7a98b982-cf9c-4cd9-a1f7-f5cc7ae242a8",
+              "leftValue": "={{ $json.stats.reply_count }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            },
+            {
+              "id": "7e0c6db4-8906-490f-8143-3fe706b158c2",
+              "leftValue": "={{ $json.stats.bounce_count }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        -1056,
+        3712
+      ],
+      "id": "c037a679-58a6-472d-b798-cf4e457dd565",
+      "name": "Filter2"
+    },
+    {
+      "parameters": {
+        "sendTo": "you@example.com",
+        "subject": "Smartlead Update",
+        "message": "={{ $json.email }} has replied on email",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -64,
+        3824
+      ],
+      "id": "b96c96e0-1ce9-4fd9-b8c1-3aaeef00193d",
+      "name": "Send a message3"
+    },
+    {
+      "parameters": {
+        "content": "# AI SDR Outbound Engine\n*LinkedIn-first, email-second multichannel outbound*\n\n**What it does:** Pulls ICP leads from Apollo (paged daily), filters a blocklist, unlocks emails, syncs to HubSpot, then runs two channels in parallel:\n- **LinkedIn:** Gemini writes a <300-char connection note → PhantomBuster sends it → acceptance tracked back in HubSpot\n- **Email:** leads not connected after 3 days get a Gemini-personalised cold email → pushed to a Smartlead campaign\n- **Replies & status:** Smartlead replies and LinkedIn acceptances update HubSpot and ping Slack / Gmail\n\n## Setup\n1. Add credentials: HubSpot, Google Sheets, Gemini, Slack, Gmail, PhantomBuster\n2. Replace every `YOUR_…` placeholder (Apollo key, Smartlead key + campaign ID, PhantomBuster agent ID, Sheet ID, intent topic ID)\n3. Fill in the `<<…>>` placeholders in the two Gemini prompts with your own offer\n4. Create HubSpot custom properties: `company_information`, `estimated_employees`, `linkedin_invite_date`, `linkedin_message`, `email_sent`\n5. Google Sheet tabs: `Page` (CurrentPage counter), `Smartleads email`, `Salesnav Linkedin`",
+        "height": 560,
+        "width": 720,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2960,
+        192
+      ],
+      "id": "4ef3e39b-1612-40b5-9cce-1ff188e9eca5",
+      "name": "Overview"
+    }
+  ],
+  "connections": {
+    "Search contacts": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Fix o/p structure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append or update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Push to Smartlead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Push to Smartlead": {
+      "main": [
+        [
+          {
+            "node": "Create or update a contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fix o/p structure": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create or update a contact": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "9:40 am": {
+      "main": [
+        [
+          {
+            "node": "Search contacts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scan Leads": {
+      "main": [
+        [
+          {
+            "node": "blocklist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unlock leads": {
+      "main": [
+        [
+          {
+            "node": "Filter1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "blocklist": {
+      "main": [
+        [
+          {
+            "node": "Unlock leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Scan Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "9 am": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Page in sheet": {
+      "main": [
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create or update a contact1": {
+      "main": [
+        [
+          {
+            "node": "Update Page in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter1": {
+      "main": [
+        [
+          {
+            "node": "Create or update a contact1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Launch Agent": {
+      "main": [
+        [
+          {
+            "node": "Update Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Batch Trigger": {
+      "main": [
+        [
+          {
+            "node": "Config Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config Fields": {
+      "main": [
+        [
+          {
+            "node": "Fetch Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Leads": {
+      "main": [
+        [
+          {
+            "node": "Normalize Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Data": {
+      "main": [
+        [
+          {
+            "node": "Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop": {
+      "main": [
+        [
+          {
+            "node": "Output Buffer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Rate Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Outreach Message": {
+      "main": [
+        [
+          {
+            "node": "Message Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Lead Status": {
+      "main": [
+        [
+          {
+            "node": "Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message Logs": {
+      "main": [
+        [
+          {
+            "node": "Update Lead Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Output Buffer": {
+      "main": [
+        [
+          {
+            "node": "Launch Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rate Limit": {
+      "main": [
+        [
+          {
+            "node": "Outreach Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LinkedIn Outreach Output": {
+      "main": [
+        [
+          {
+            "node": "Get matching linkedin contacts in hubspot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message2": {
+      "main": [
+        [
+          {
+            "node": "Create or update a contact2",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send a message3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search contacts2": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Filter2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter 3": {
+      "main": [
+        [
+          {
+            "node": "Send a message2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get output from Smartlead": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update LinkedIn Invite Date": {
+      "main": [
+        [
+          {
+            "node": "Set Invite Date format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Filter 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "12,5 pm": {
+      "main": [
+        [
+          {
+            "node": "LinkedIn Outreach Output",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get output from Smartlead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If ID is valid": {
+      "main": [
+        [
+          {
+            "node": "Update LinkedIn Invite Date",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get matching linkedin contacts in hubspot": {
+      "main": [
+        [
+          {
+            "node": "If ID is valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Invite Date format": {
+      "main": [
+        [
+          {
+            "node": "date>3,exist, not = connected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Status to connected": {
+      "main": [
+        [
+          {
+            "node": "new update slack",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "new update gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "connected, not updated": {
+      "main": [
+        [
+          {
+            "node": "Connection status update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Connection status update": {
+      "main": [
+        [
+          {
+            "node": "new update slack1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "New update Gmail 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    ">3 days": {
+      "main": [
+        [
+          {
+            "node": "req accepted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "date>3,exist, not = connected": {
+      "main": [
+        [
+          {
+            "node": ">3 days",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "connected, not updated",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "req accepted": {
+      "main": [
+        [
+          {
+            "node": "Update Status to connected",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update status to no response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter2": {
+      "main": [
+        [
+          {
+            "node": "Search contacts2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
