@@ -10,6 +10,8 @@ Built for, and run in production with, a B2B SaaS sales team. Client details hav
 ![Nodes](https://img.shields.io/badge/nodes-73-blue)
 ![Gemini](https://img.shields.io/badge/AI-Gemini%202.5%20Flash-4285F4?logo=googlegemini&logoColor=white)
 
+![AI SDR Outbound Engine workflow in n8n](./screenshot.png)
+
 ---
 
 ## What it does

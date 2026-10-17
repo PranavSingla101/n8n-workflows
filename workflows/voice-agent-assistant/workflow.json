@@ -279,8 +279,8 @@
     {
       "parameters": {
         "content": "# Voice Agent Assistant: Calendar MCP Server\n*Talk to a Vapi voice agent → it manages your Google Calendar through these tools*\n\nThis workflow exposes 5 calendar tools over **MCP** (Model Context Protocol). A Vapi voice assistant connects to the MCP URL and calls the tools mid-conversation:\n- **Check Availability** · **Create Event** · **Get Events** · **Update Event** · **Delete Event**\n\nEach tool is a small sub-workflow. The agent fills the inputs itself via `$fromAI()`.\n\n## Setup\n1. Import the 5 files in `sub-workflows/` and connect Google Calendar\n2. In each `Call '…'` node here, select the matching sub-workflow\n3. Create a **Bearer Auth** credential for the MCP trigger and activate\n4. In Vapi, add an MCP tool pointing at the trigger's Production URL with the same bearer token",
-        "height": 500,
-        "width": 620,
+        "height": 460,
+        "width": 660,
         "color": 6
       },
       "type": "n8n-nodes-base.stickyNote",

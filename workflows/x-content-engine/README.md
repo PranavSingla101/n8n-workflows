@@ -8,6 +8,8 @@ Every day this workflow finds a fresh article about your topic, has a Gemini age
 ![Gemini](https://img.shields.io/badge/AI-Gemini%202.5%20Flash--Lite-4285F4?logo=googlegemini&logoColor=white)
 ![X](https://img.shields.io/badge/X-API%20v2-000000?logo=x&logoColor=white)
 
+![X Content Engine workflow in n8n](./screenshot.png)
+
 ---
 
 ## What it does

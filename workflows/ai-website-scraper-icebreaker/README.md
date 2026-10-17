@@ -8,6 +8,8 @@ This workflow pulls ICP prospects from Apollo, crawls each company's website wit
 ![Firecrawl](https://img.shields.io/badge/Firecrawl-crawl-FF6B35)
 ![Gemini](https://img.shields.io/badge/AI-Gemini%202.5%20Flash-4285F4?logo=googlegemini&logoColor=white)
 
+![AI Website Scraper & Icebreaker workflow in n8n](./screenshot.png)
+
 ---
 
 ## What it does

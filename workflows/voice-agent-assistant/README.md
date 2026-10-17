@@ -8,6 +8,8 @@ You talk to a voice assistant the way you'd talk to a human assistant: *"Am I fr
 ![Vapi](https://img.shields.io/badge/Voice-Vapi-5B4BFF)
 ![Google Calendar](https://img.shields.io/badge/Google%20Calendar-API-4285F4?logo=googlecalendar&logoColor=white)
 
+![Voice Agent Assistant MCP server workflow in n8n](./screenshot.png)
+
 ---
 
 ## What it does

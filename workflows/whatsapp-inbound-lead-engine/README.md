@@ -8,6 +8,8 @@ When someone fills in a contact form, this workflow validates the lead, checks w
 ![Claude](https://img.shields.io/badge/AI-Claude-D97757?logo=anthropic&logoColor=white)
 ![WhatsApp](https://img.shields.io/badge/WhatsApp-Cloud%20API-25D366?logo=whatsapp&logoColor=white)
 
+![WhatsApp Inbound Lead Engine workflow in n8n](./screenshot.png)
+
 ---
 
 ## What it does
