@@ -1,0 +1,554 @@
+{
+  "name": "WhatsApp Inbound Lead Engine",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const required = ['name', 'phone', 'inquiry', 'source', 'timestamp'];\nconst body = $input.first().json.body ?? $input.first().json;\n\nfor (const field of required) {\n  if (!body[field]) throw new Error(`Missing required field: ${field}`);\n}\n\nreturn [{\n  json: {\n    lead_id: $execution.id + '-' + Date.now(),\n    name: String(body.name).trim(),\n    phone: String(body.phone).replace(/\\s+/g, ''),\n    inquiry: String(body.inquiry).trim(),\n    source: body.source,\n    timestamp: body.timestamp,\n    metadata: body.metadata ?? {},\n    created_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "70696383-a2ee-4c3a-ad91-d68280cf23b4",
+      "name": "Validate & Normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1088,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\": \"accepted\", \"message\": \"Lead received and queued for processing\" }",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "387902ee-adf9-491f-bb95-031b3c2cacbb",
+      "name": "Acknowledge 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -864,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const lead = $('Validate & Normalize').first().json;\n\nconst prompt = `You are a premium sales assistant. A new lead submitted an inquiry.\n\nLead Details:\n- Name: ${lead.name}\n- Inquiry: ${lead.inquiry}\n- Source: ${lead.source}\n\nTasks:\n1. Classify the intent (e.g. pricing, demo, support, general inquiry)\n2. Write a concise 1-sentence summary of the lead\n3. Write a personalized WhatsApp outreach message (STRICT MAX 700 chars). Be helpful, professional, and match the language the lead used.\n\nIMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation. Format:\n{\n  \"intent_classification\": \"...\",\n  \"short_summary\": \"...\",\n  \"personalized_whatsapp_message\": \"...\"\n}`;\n\nreturn [{ json: { ...lead, prompt } }];"
+      },
+      "id": "0938f93a-fb96-4392-bdc4-a772fe0aca2b",
+      "name": "Prepare LLM Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const claudeResp = $input.first().json;\nconst lead = $('Prepare LLM Prompt').first().json;\n\nlet parsed;\ntry {\n  const rawText = claudeResp.content[0].text;\n  parsed = JSON.parse(rawText);\n} catch (e) {\n  // LLM fallback — safe template\n  parsed = {\n    intent_classification: 'unknown',\n    short_summary: 'New inbound lead inquiry',\n    personalized_whatsapp_message: `Hi ${lead.name}, thanks for reaching out! Our team has received your inquiry and will get back to you shortly.`\n  };\n}\n\n// Enforce 700 char hard cap\nif (parsed.personalized_whatsapp_message.length > 700) {\n  parsed.personalized_whatsapp_message = parsed.personalized_whatsapp_message.substring(0, 697) + '...';\n}\n\nreturn [{ json: { ...lead, ...parsed } }];"
+      },
+      "id": "ad3460c6-0996-4e7e-9352-1e7c8343e3db",
+      "name": "Parse & Guard LLM Output",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Leads"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "lead_id": "={{ $json.lead_id }}",
+            "name": "={{ $json.name }}",
+            "phone": "={{ $json.phone }}",
+            "inquiry": "={{ $json.inquiry }}",
+            "intent_classification": "={{ $json.intent_classification }}",
+            "short_summary": "={{ $json.short_summary }}",
+            "created_at": "={{ $json.created_at }}",
+            "status": "=sent"
+          },
+          "matchingColumns": [
+            "lead_id"
+          ],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "b1619ab8-675b-4f81-9b75-a058a207ae36",
+      "name": "Log to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1072,
+        256
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "5eaed0b1-8194-49f2-8ecf-04b6414309f1",
+      "name": "Merge & Finalize",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        1296,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-opus-4-5\",\n  \"max_tokens\": 1024,\n  \"messages\": [\n    { \"role\": \"user\", \"content\": {{ JSON.stringify($json.prompt) }} }\n  ]\n}",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
+      },
+      "id": "af2d0802-0faa-4ac0-bf93-3c2052529f15",
+      "name": "Claude - Personalize",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        416,
+        416
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "",
+          "name": "Anthropic API (x-api-key header)"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "webflow/lead",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "69271275-8dd4-480c-a6c3-942efcc356b1",
+      "name": "Lead Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1328,
+        400
+      ],
+      "webhookId": "719cd64d-6009-4f8b-8a83-7a87b14f438e"
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "phoneNumberId": "YOUR_WHATSAPP_PHONE_NUMBER_ID",
+        "recipientPhoneNumber": "={{ $json.phone }}",
+        "textBody": "={{ $json.personalized_whatsapp_message }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.whatsApp",
+      "typeVersion": 1.1,
+      "position": [
+        1072,
+        528
+      ],
+      "id": "c3c862f0-884a-4da7-829e-27dbe9df2d3f",
+      "name": "WhatsApp: Send Reply",
+      "credentials": {
+        "whatsAppApi": {
+          "id": "",
+          "name": "WhatsApp Business account"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "content": "# Input & Normalization",
+        "height": 640,
+        "width": 768
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1392,
+        112
+      ],
+      "typeVersion": 1,
+      "id": "b81cf8b6-1e1e-4098-8b91-6921f702e37b",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "# AI Personalization",
+        "height": 640,
+        "width": 768,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        112,
+        112
+      ],
+      "typeVersion": 1,
+      "id": "1cdeba38-ebfa-4d2c-8da2-6937a53db238",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "# Delivery + Logs",
+        "height": 640,
+        "width": 848,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        880,
+        112
+      ],
+      "typeVersion": 1,
+      "id": "8136d411-ff87-453b-a15f-8d4205fe3a6d",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#inbound-leads",
+          "mode": "name"
+        },
+        "text": "=:zap: New inbound lead — replied on WhatsApp\n*{{ $('Parse & Guard LLM Output').item.json.name }}* · {{ $('Parse & Guard LLM Output').item.json.source }}\n*Intent:* {{ $('Parse & Guard LLM Output').item.json.intent_classification }}\n*Summary:* {{ $('Parse & Guard LLM Output').item.json.short_summary }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        1504,
+        400
+      ],
+      "id": "fa008d14-9bfc-461d-80cf-b256770549a8",
+      "name": "Slack: New Lead Summary",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Leads",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "phone",
+              "lookupValue": "={{ $('Validate & Normalize').item.json.phone }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -560,
+        400
+      ],
+      "id": "e7fdc948-ebe5-40ca-a076-c24f72f355de",
+      "name": "Lookup Existing Lead",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets account"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "14144b28-69c5-400f-bd03-425d04ac12df",
+              "leftValue": "={{ $json.phone }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -320,
+        400
+      ],
+      "id": "332dff4a-ae1a-4ca8-a671-1d6651a4ef88",
+      "name": "Already Contacted?"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "#inbound-leads",
+          "mode": "name"
+        },
+        "text": "=:repeat: Repeat inquiry from *{{ $('Validate & Normalize').item.json.name }}* — already contacted, no auto-reply sent.\n> {{ $('Validate & Normalize').item.json.inquiry }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        -80,
+        240
+      ],
+      "id": "57ebbefa-6386-4ff3-b1a0-87091c59690a",
+      "name": "Slack: Duplicate Lead",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "# Duplicate check",
+        "height": 640,
+        "width": 736,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -624,
+        112
+      ],
+      "typeVersion": 1,
+      "id": "614ad57b-616f-4821-a358-ede8a3ddfdfe",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "# WhatsApp Inbound Lead Engine\n*Website form → Claude-written WhatsApp reply in seconds*\n\n1. **Webhook** receives a form submission (Webflow or any site) and returns 200 straight away\n2. **Validate** required fields and normalise the phone number\n3. **Duplicate check** against the Leads sheet: repeat leads go to Slack only, with no second auto-reply\n4. **Claude** classifies intent, summarises the lead and writes a reply in the lead's language (max 700 chars)\n5. **Guardrails:** JSON parse with a safe fallback template, hard character cap, retries\n6. **In parallel:** send on WhatsApp + log to Sheets → Slack summary to the team\n\n## Setup\n- Credentials: Anthropic (Header Auth, name `x-api-key`), WhatsApp Business Cloud, Google Sheets, Slack\n- Replace `YOUR_GOOGLE_SHEET_ID` and `YOUR_WHATSAPP_PHONE_NUMBER_ID`\n- Sheet tab `Leads` with columns: lead_id, name, phone, inquiry, intent_classification, short_summary, created_at, status\n- POST JSON to `/webhook/webflow/lead`: `{name, phone, inquiry, source, timestamp}`",
+        "height": 620,
+        "width": 640,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -2092,
+        112
+      ],
+      "id": "333b2d2f-1e23-41f8-9f8c-32b839958d93",
+      "name": "Overview"
+    }
+  ],
+  "connections": {
+    "Validate & Normalize": {
+      "main": [
+        [
+          {
+            "node": "Acknowledge 200",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Acknowledge 200": {
+      "main": [
+        [
+          {
+            "node": "Lookup Existing Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare LLM Prompt": {
+      "main": [
+        [
+          {
+            "node": "Claude - Personalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Guard LLM Output": {
+      "main": [
+        [
+          {
+            "node": "Log to Google Sheets",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "WhatsApp: Send Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Merge & Finalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge & Finalize": {
+      "main": [
+        [
+          {
+            "node": "Slack: New Lead Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude - Personalize": {
+      "main": [
+        [
+          {
+            "node": "Parse & Guard LLM Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate & Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp: Send Reply": {
+      "main": [
+        [
+          {
+            "node": "Merge & Finalize",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Lookup Existing Lead": {
+      "main": [
+        [
+          {
+            "node": "Already Contacted?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Already Contacted?": {
+      "main": [
+        [
+          {
+            "node": "Slack: Duplicate Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare LLM Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
